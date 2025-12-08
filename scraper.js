@@ -44,7 +44,7 @@ async function obtenerPromedioBinance() {
     }
 }
 
-async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoUsuarioUsdt = 0) {
+async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoUsuarioUsdt = 0,montoUsuarioEu = 0) {
     try {
         const [respuestaBCV, precioBinanceStr] = await Promise.all([
             fetch(URL_BCV),
@@ -54,8 +54,10 @@ async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoU
         // --- LÓGICA BCV ---
         const dataBCV = await respuestaBCV.text();
         const $ = cheerio.load(dataBCV);
+        const selectorPrecioEu = '#euro .centrado strong';
         const selectorPrecio = '#dolar .centrado strong'; 
         const elementoPrecio = $(selectorPrecio).first();
+        const elementoPrecioEu = $(selectorPrecioEu).first();
         
         // Objeto base de respuesta
         let resultado = {
@@ -63,13 +65,16 @@ async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoU
             fuente_bcv: `Banco Central de Venezuela`,
             fuente_binance: `Binance P2P (Promedio 10 órdenes)`,
             bcv: null,
+            euro: null,
             binance: null,
             conversion: {}
         };
 
         // Procesar BCV
-        if (elementoPrecio.length > 0) {
+        if (elementoPrecio.length > 0 && elementoPrecioEu.length > 0) {
             let precioStr = elementoPrecio.text().trim();
+            let percioEu = elementoPrecioEu.text().trim();
+            let precioLimpioEu = parseFloat(percioEu.replace(',', '.').trim());
             let precioLimpio = precioStr.replace(',', '.').trim();
             const precioBCV = parseFloat(precioLimpio);
             const precioBinance = parseFloat(precioBinanceStr);
@@ -77,6 +82,7 @@ async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoU
             if (!isNaN(precioBCV) && !isNaN(precioBinanceStr)){
                 resultado.bcv = precioBCV.toFixed(2);
                 resultado.binance = precioBinance.toFixed(2);
+                resultado.euro = precioLimpioEu.toFixed(2);
 
                 switch(true){
                     case montoUsuarioBs > 0:
@@ -87,6 +93,9 @@ async function obtenerPrecioDolar(montoUsuarioUsd = 0, montoUsuarioBs = 0,montoU
                         break;
                     case montoUsuarioUsdt > 0:
                         resultado.conversion.bcv_total_usdt = (montoUsuarioUsdt * precioBinance).toFixed(2);
+                        break;
+                    case montoUsuarioEu > 0:
+                        resultado.conversion.bcv_total_eur = (montoUsuarioEu * precioLimpioEu).toFixed(2);  
                         break;
                     default:
                         break;

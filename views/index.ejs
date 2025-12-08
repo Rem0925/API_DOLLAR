@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dólar Monitor</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --bs-body-bg: #f3f4f6;
+            --bs-body-font-family: 'Inter', sans-serif;
+            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            color: #1f2937;
+            background-color: var(--bs-body-bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .main-container {
+            max-width: 600px; /* Ancho controlado para verse bien en PC */
+        }
+
+        .app-card {
+            border: none;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease;
+        }
+
+        /* Tarjetas de Tasas (Mini Cards) */
+        .rate-card {
+            padding: 1.25rem;
+            height: 100%;
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+        
+        .rate-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 600; }
+        .rate-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
+        .currency-symbol { font-size: 0.8rem; font-weight: 500; color: #9ca3af; vertical-align: middle; }
+
+        /* Input Custom */
+        .form-control-lg, .form-select-lg {
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            font-size: 1.1rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+        }
+        .form-control-lg:focus, .form-select-lg:focus {
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); /* Sombra verde suave */
+            border-color: #10b981;
+        }
+
+        /* Botón */
+        .btn-action {
+            border-radius: 12px;
+            padding: 1rem;
+            font-weight: 600;
+            background-color: #111827; /* Casi negro */
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-action:hover { background-color: #000; transform: translateY(-1px); }
+
+        /* Resultado */
+        .result-display {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100 justify-content-center py-4">
+
+    <div class="container main-container">
+        
+        <div class="d-flex justify-content-between align-items-end mb-4 px-2">
+            <div>
+                <h6 class="text-uppercase text-muted fw-bold mb-0 small">API</h6>
+                <h1 class="fw-bold mb-0 text-dark">Monitor</h1>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-white text-dark border shadow-sm rounded-pill px-3 py-2 fw-normal">
+                    <i class="bi bi-calendar3 me-1 text-muted"></i> <%= precios.fecha %>
+                </span>
+            </div>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">
+                <i class="bi bi-exclamation-circle-fill me-2"></i> <%= error %>
+            </div>
+        <% } else { %>
+
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <div class="app-card rate-card text-center position-relative">
+                        <div class="rate-label mb-2">BCV</div>
+                        <div class="rate-value text-dark"><%= precios.bcv %></div>
+                        <div class="currency-symbol">Bs/USD</div>
+                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-success" style="width: 4px; height: 4px;"></div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="app-card rate-card text-center position-relative">
+                        <div class="rate-label mb-2">Binance</div>
+                        <div class="rate-value text-dark"><%= precios.binance %></div>
+                        <div class="currency-symbol">Bs/USDT</div>
+                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-warning" style="width: 4px; height: 4px;"></div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="app-card rate-card text-center position-relative">
+                        <div class="rate-label mb-2">Euro</div>
+                        <div class="rate-value text-dark"><%= precios.euro %></div>
+                        <div class="currency-symbol">Bs/EUR</div>
+                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-primary" style="width: 4px; height: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card p-4 mb-4">
+                <h5 class="fw-bold mb-4 small text-uppercase text-muted">Calculadora</h5>
+                
+                <form action="/api/dolar/ves" method="GET">
+                    <div class="row g-3">
+                        <div class="col-5">
+                            <select id="currency-selector" class="form-select form-select-lg fw-bold text-dark border-0 bg-light">
+                                <option value="Usd">🇺🇸 USD</option>
+                                <option value="Bs">🇻🇪 VES</option>
+                                <option value="Usdt">🪙 USDT</option>
+                                <option value="Eu">🇪🇺 EUR</option>
+                            </select>
+                        </div>
+                        <div class="col-7">
+                            <input type="number" step="0.01" id="amount-input" name="Usd" 
+                                class="form-control form-control-lg fw-bold text-end" 
+                                placeholder="0.00" required>
+                        </div>
+                        
+                        <div class="col-12 mt-4">
+                            <button type="submit" class="btn btn-action w-100 text-white shadow-sm">
+                                Convertir Ahora
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <% if (precios.conversion && Object.keys(precios.conversion).length > 0) { %>
+                <div class="result-display p-4 text-center shadow-lg animate__animated animate__fadeInUp">
+                    <p class="mb-1 opacity-75 small text-uppercase fw-bold">Resultado Estimado</p>
+                    
+                    <% if (precios.conversion.bcv_total_usd) { %>
+                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usd %></h1>
+                        <span class="fs-5 opacity-75">Bolívares Digitales</span>
+                    <% } %>
+
+                    <% if (precios.conversion.bcv_total_ves) { %>
+                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_ves %></h1>
+                        <span class="fs-5 opacity-75">Dólares (USD)</span>
+                    <% } %>
+
+                    <% if (precios.conversion.bcv_total_usdt) { %>
+                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usdt %></h1>
+                        <span class="fs-5 opacity-75">Bolívares (Tasa Binance)</span>
+                    <% } %>
+                    
+                    <% if (precios.conversion.bcv_total_eur) { %>
+                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_eur %></h1>
+                        <span class="fs-5 opacity-75">Bolívares (Tasa Euro)</span>
+                    <% } %>
+
+                    <div class="mt-4 pt-3 border-top border-white border-opacity-25">
+                         <a href="/api/dolar/ves" class="text-white text-decoration-none small fw-bold">
+                            <i class="bi bi-arrow-repeat me-1"></i> Nueva consulta
+                         </a>
+                    </div>
+                </div>
+            <% } %>
+
+        <% } %>
+    </div>
+
+    <script>
+        const selector = document.getElementById('currency-selector');
+        const input = document.getElementById('amount-input');
+
+        function updateInputName() {
+            input.name = selector.value;
+            // Quitamos el placeholder para que se vea más limpio al escribir
+            input.placeholder = "0.00";
+            input.focus();
+        }
+
+        selector.addEventListener('change', updateInputName);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('Bs')) selector.value = 'Bs';
+            else if (params.has('Usdt')) selector.value = 'Usdt';
+            else if (params.has('Eu')) selector.value = 'Eu';
+            else selector.value = 'Usd';
+            
+            updateInputName();
+            
+            // Si ya hay un valor, lo ponemos en el input para que no se pierda
+            if (params.has(selector.value)) {
+                input.value = params.get(selector.value);
+            }
+        });
+    </script>
+</body>
+</html>
