@@ -3,7 +3,7 @@ import cors from 'cors';
 import obtenerPrecioDolar from './scraper.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -27,5 +27,5 @@ app.get('/api/dolar/ves', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 API lista en http://localhost:${PORT}/api/dolar/ves`);
+    console.log(`🚀 API lista en http://localhost:${PORT}/api/dolar/ves o https://api-dollar-0f0i.onrender.com/api/dolar/ves`);
 });
