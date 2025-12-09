@@ -19,7 +19,7 @@ async function obtenerPromedioBinance() {
             "page": 1,
             "payTypes": [], 
             "publisherType": null,
-            "rows": 10, 
+            "rows": 20, 
             "tradeType": "BUY"
         };
 
