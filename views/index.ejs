@@ -15,67 +15,30 @@
             --bs-body-font-family: 'Inter', sans-serif;
             --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
         }
-
-        body {
-            color: #1f2937;
-            background-color: var(--bs-body-bg);
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .main-container {
-            max-width: 600px; /* Ancho controlado para verse bien en PC */
-        }
-
-        .app-card {
-            border: none;
-            border-radius: 20px;
-            background: #ffffff;
-            box-shadow: var(--card-shadow);
-            transition: transform 0.2s ease;
-        }
-
-        /* Tarjetas de Tasas (Mini Cards) */
-        .rate-card {
-            padding: 1.25rem;
-            height: 100%;
-            border: 1px solid rgba(0,0,0,0.02);
-        }
-        
+        body { color: #1f2937; background-color: var(--bs-body-bg); font-family: var(--bs-body-font-family); }
+        .main-container { max-width: 600px; }
+        .app-card { border: none; border-radius: 20px; background: #ffffff; box-shadow: var(--card-shadow); }
+        .rate-card { padding: 1.25rem; height: 100%; border: 1px solid rgba(0,0,0,0.02); }
         .rate-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 600; }
-        .rate-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
-        .currency-symbol { font-size: 0.8rem; font-weight: 500; color: #9ca3af; vertical-align: middle; }
+        .rate-value { font-size: 1.5rem; font-weight: 800; }
+        .currency-symbol { font-size: 0.8rem; font-weight: 500; color: #9ca3af; }
+        .form-control-lg, .form-select-lg { border-radius: 12px; border: 1px solid #e5e7eb; padding: 1rem; background-color: #f9fafb; }
+        .btn-action { border-radius: 12px; padding: 1rem; font-weight: 600; background-color: #111827; border: none; color: white; width: 100%; }
+        .btn-action:hover { background-color: #000; }
+        .result-display { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px; }
 
-        /* Input Custom */
-        .form-control-lg, .form-select-lg {
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            font-size: 1.1rem;
-            padding: 1rem;
-            background-color: #f9fafb;
-        }
-        .form-control-lg:focus, .form-select-lg:focus {
-            background-color: #fff;
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); /* Sombra verde suave */
-            border-color: #10b981;
-        }
-
-        /* Botón */
-        .btn-action {
-            border-radius: 12px;
-            padding: 1rem;
-            font-weight: 600;
-            background-color: #111827; /* Casi negro */
-            border: none;
+        /* Estilos del Calendario en Modal */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 10px; }
+        .cal-day-name { text-align: center; font-size: 0.8rem; font-weight: bold; color: #6b7280; margin-bottom: 5px; }
+        .cal-day { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            border-radius: 8px; font-size: 0.9rem; color: #d1d5db; position: relative; 
             transition: all 0.2s;
         }
-        .btn-action:hover { background-color: #000; transform: translateY(-1px); }
-
-        /* Resultado */
-        .result-display {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-radius: 20px;
-        }
+        .cal-day.active { background-color: #f3f4f6; color: #1f2937; cursor: pointer; font-weight: 600; }
+        .cal-day.active:hover { background-color: #10b981; color: white; transform: scale(1.05); }
+        .cal-dot { width: 4px; height: 4px; background-color: #10b981; border-radius: 50%; position: absolute; bottom: 5px; }
+        .cal-day.active:hover .cal-dot { background-color: white; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100 justify-content-center py-4">
@@ -88,18 +51,23 @@
                 <h1 class="fw-bold mb-0 text-dark">Monitor</h1>
             </div>
             <div class="text-end">
-                <span class="badge bg-white text-dark border shadow-sm rounded-pill px-3 py-2 fw-normal">
-                    <i class="bi bi-calendar3 me-1 text-muted"></i> <%= precios.fecha %>
-                </span>
+                <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="cursor: pointer;" onclick="abrirCalendario()">
+                    <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-calendar3"></i></span>
+                    <input type="text" class="form-control border-0 bg-white" 
+                           value="<%= fechaBusqueda ? fechaBusqueda : 'Hoy' %>" 
+                           readonly style="max-width: 120px; cursor: pointer; font-weight: 500;">
+                </div>
+                <% if (fechaBusqueda) { %>
+                    <div class="mt-1"><a href="/api/dolar/ves" class="badge bg-dark text-decoration-none">Ver Actual</a></div>
+                <% } %>
             </div>
         </div>
 
         <% if (error) { %>
-            <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">
-                <i class="bi bi-exclamation-circle-fill me-2"></i> <%= error %>
-            </div>
-        <% } else { %>
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-2"></i><%= error %></div>
+        <% } %>
 
+        <% if (precios && precios.bcv) { %>
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <div class="app-card rate-card text-center position-relative">
@@ -129,8 +97,8 @@
 
             <div class="app-card p-4 mb-4">
                 <h5 class="fw-bold mb-4 small text-uppercase text-muted">Calculadora</h5>
-                
                 <form action="/api/dolar/ves" method="GET">
+                    <% if (fechaBusqueda) { %> <input type="hidden" name="fecha" value="<%= fechaBusqueda %>"> <% } %>
                     <div class="row g-3">
                         <div class="col-5">
                             <select id="currency-selector" class="form-select form-select-lg fw-bold text-dark border-0 bg-light">
@@ -141,16 +109,9 @@
                             </select>
                         </div>
                         <div class="col-7">
-                            <input type="number" step="0.01" id="amount-input" name="Usd" 
-                                class="form-control form-control-lg fw-bold text-end" 
-                                placeholder="0.00" required>
+                            <input type="number" step="0.01" id="amount-input" name="Usd" class="form-control form-control-lg fw-bold text-end" placeholder="0.00" required>
                         </div>
-                        
-                        <div class="col-12 mt-4">
-                            <button type="submit" class="btn btn-action w-100 text-white shadow-sm">
-                                Convertir Ahora
-                            </button>
-                        </div>
+                        <div class="col-12 mt-4"><button type="submit" class="btn btn-action shadow-sm">Convertir Ahora</button></div>
                     </div>
                 </form>
             </div>
@@ -158,65 +119,132 @@
             <% if (precios.conversion && Object.keys(precios.conversion).length > 0) { %>
                 <div class="result-display p-4 text-center shadow-lg animate__animated animate__fadeInUp">
                     <p class="mb-1 opacity-75 small text-uppercase fw-bold">Resultado Estimado</p>
-                    
-                    <% if (precios.conversion.bcv_total_usd) { %>
-                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usd %></h1>
-                        <span class="fs-5 opacity-75">Bolívares Digitales</span>
-                    <% } %>
-
-                    <% if (precios.conversion.bcv_total_ves) { %>
-                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_ves %></h1>
-                        <span class="fs-5 opacity-75">Dólares (USD)</span>
-                    <% } %>
-
-                    <% if (precios.conversion.bcv_total_usdt) { %>
-                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usdt %></h1>
-                        <span class="fs-5 opacity-75">Bolívares (Tasa Binance)</span>
-                    <% } %>
-                    
-                    <% if (precios.conversion.bcv_total_eur) { %>
-                        <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_eur %></h1>
-                        <span class="fs-5 opacity-75">Bolívares (Tasa Euro)</span>
-                    <% } %>
+                    <% if (precios.conversion.bcv_total_usd) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usd %></h1> <span class="fs-5 opacity-75">Bs Digitales</span> <% } %>
+                    <% if (precios.conversion.bcv_total_ves) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_ves %></h1> <span class="fs-5 opacity-75">USD</span> <% } %>
+                    <% if (precios.conversion.bcv_total_usdt) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usdt %></h1> <span class="fs-5 opacity-75">Bs (Binance)</span> <% } %>
+                    <% if (precios.conversion.bcv_total_eur) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_eur %></h1> <span class="fs-5 opacity-75">Bs (Euro)</span> <% } %>
 
                     <div class="mt-4 pt-3 border-top border-white border-opacity-25">
-                         <a href="/api/dolar/ves" class="text-white text-decoration-none small fw-bold">
-                            <i class="bi bi-arrow-repeat me-1"></i> Nueva consulta
+                         <a href="/api/dolar/ves<%= fechaBusqueda ? '?fecha='+fechaBusqueda : '' %>" class="text-white text-decoration-none small fw-bold">
+                             <i class="bi bi-arrow-repeat me-1"></i> Nueva consulta
                          </a>
                     </div>
                 </div>
             <% } %>
-
         <% } %>
     </div>
 
+    <div class="modal fade" id="calendarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">Histórico</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                        <button class="btn btn-sm btn-light border rounded-circle shadow-sm" onclick="cambiarMes(-1)"><i class="bi bi-chevron-left"></i></button>
+                        <span id="calTitle" class="fw-bold text-capitalize small">...</span>
+                        <button class="btn btn-sm btn-light border rounded-circle shadow-sm" onclick="cambiarMes(1)"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    
+                    <div class="calendar-grid">
+                        <div class="cal-day-name">Do</div><div class="cal-day-name">Lu</div><div class="cal-day-name">Ma</div>
+                        <div class="cal-day-name">Mi</div><div class="cal-day-name">Ju</div><div class="cal-day-name">Vi</div><div class="cal-day-name">Sa</div>
+                        <div id="calDaysContainer" style="display: contents;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- FUNCIONES DEL FRONTEND ---
+        
+        // 1. Selector de Monedas (Visual)
         const selector = document.getElementById('currency-selector');
         const input = document.getElementById('amount-input');
-
-        function updateInputName() {
-            input.name = selector.value;
-            // Quitamos el placeholder para que se vea más limpio al escribir
-            input.placeholder = "0.00";
-            input.focus();
-        }
-
-        selector.addEventListener('change', updateInputName);
-
-        document.addEventListener('DOMContentLoaded', () => {
+        if(selector && input){
+            function updateInputName() { input.name = selector.value; input.placeholder = "0.00"; input.focus(); }
+            selector.addEventListener('change', updateInputName);
             const params = new URLSearchParams(window.location.search);
             if (params.has('Bs')) selector.value = 'Bs';
             else if (params.has('Usdt')) selector.value = 'Usdt';
             else if (params.has('Eu')) selector.value = 'Eu';
             else selector.value = 'Usd';
-            
             updateInputName();
+            if (params.has(selector.value)) input.value = params.get(selector.value);
+        }
+
+        // 2. Lógica del Calendario (LAZY LOADING)
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let calendarModal;
+
+        function abrirCalendario() {
+            if (!calendarModal) calendarModal = new bootstrap.Modal(document.getElementById('calendarModal'));
+            calendarModal.show();
+            // Llama a la API solo cuando se abre
+            cargarDatosCalendario(currentMonth, currentYear);
+        }
+
+        function cambiarMes(delta) {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            cargarDatosCalendario(currentMonth, currentYear);
+        }
+
+        async function cargarDatosCalendario(mes, anio) {
+            const container = document.getElementById('calDaysContainer');
+            const title = document.getElementById('calTitle');
             
-            // Si ya hay un valor, lo ponemos en el input para que no se pierda
-            if (params.has(selector.value)) {
-                input.value = params.get(selector.value);
+            // UI de carga
+            const dateObj = new Date(anio, mes, 1);
+            title.textContent = dateObj.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+            container.innerHTML = '<div class="text-center w-100 py-4 text-muted small" style="grid-column: span 7"><div class="spinner-border spinner-border-sm mb-2" role="status"></div><br>Buscando datos...</div>';
+
+            try {
+                // FETCH AL ENDPOINT "MODO CALENDARIO"
+                const res = await fetch(`/api/dolar/ves?modo=calendario&mes=${mes}&anio=${anio}`);
+                const data = await res.json();
+                const diasDisponibles = data.dias || [];
+
+                // Renderizar Grid
+                const firstDay = new Date(anio, mes, 1).getDay(); // 0 = Domingo
+                const daysInMonth = new Date(anio, mes + 1, 0).getDate();
+                let html = '';
+
+                // Espacios vacíos
+                for(let i=0; i<firstDay; i++) html += `<div></div>`;
+
+                // Días
+                for(let d=1; d<=daysInMonth; d++) {
+                    const tieneData = diasDisponibles.includes(d);
+                    // Formato YYYY-MM-DD para el link
+                    const mesFmt = String(mes + 1).padStart(2, '0');
+                    const diaFmt = String(d).padStart(2, '0');
+                    const fechaFull = `${anio}-${mesFmt}-${diaFmt}`;
+
+                    if(tieneData) {
+                        html += `
+                            <a href="/api/dolar/ves?fecha=${fechaFull}" class="cal-day active text-decoration-none" title="Ver tasa del día ${d}">
+                                ${d}
+                                <div class="cal-dot"></div>
+                            </a>
+                        `;
+                    } else {
+                        html += `<div class="cal-day">${d}</div>`;
+                    }
+                }
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<small class="text-danger text-center w-100" style="grid-column: span 7">Error de conexión</small>';
             }
-        });
+        }
     </script>
 </body>
 </html>
