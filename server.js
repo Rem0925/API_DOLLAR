@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import connectDB from './src/config/db.js';
 import { iniciarCronJobs } from './src/jobs/cronJob.js';
-import { getTasas } from './src/controllers/tasaController.js';
+import { getTasas, getHistorialGrafica } from './src/controllers/tasaController.js';
 
 dotenv.config();
 
@@ -29,6 +29,7 @@ app.use(express.json());
 
 // 3. Rutas
 app.get('/api/dolar/ves', getTasas);
+app.get('/api/dolar/historial', getHistorialGrafica);
 
 app.get('/', (req, res) => {
     res.redirect('/api/dolar/ves');
