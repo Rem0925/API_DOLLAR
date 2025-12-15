@@ -13,8 +13,8 @@ export const getTasas = async (req, res) => {
             const month = parseInt(mes); // 0 = Enero
 
             // Definir rango del mes solicitado
-            const inicioMes = new Date(year, month, 1, 0, 0, 0);
-            const finMes = new Date(year, month + 1, 0, 23, 59, 59)
+            const inicioMes = new Date(Date.UTC(year, month, 1, 4, 0, 0, 0));
+            const finMes = new Date(Date.UTC(year, month + 1, 1, 4, 0, 0, 0));
 
             // Búsqueda optimizada: Solo traemos el campo fechaActualizacion
             // Esto es muy ligero para la BD
@@ -44,8 +44,8 @@ export const getTasas = async (req, res) => {
             const day = parseInt(partes[2]);
 
             // Creamos la fecha usando argumentos numéricos -> HORA LOCAL
-            const inicioDia = new Date(year, month, day, 0, 0, 0, 0);
-            const finDia = new Date(year, month, day, 23, 59, 59, 999);
+            const inicioDia = new Date(Date.UTC(year, month, day, 4, 0, 0, 0));
+            const finDia = new Date(Date.UTC(year, month, day + 1, 4, 0, 0, 0));
 
             tasaData = await Tasa.findOne({
                 fechaActualizacion: { $gte: inicioDia, $lte: finDia }
