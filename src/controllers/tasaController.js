@@ -123,6 +123,6 @@ export const getTasas = async (req, res) => {
         if(req.query.modo === 'calendario') {
             return res.status(500).json({ error: 'Error interno obteniendo calendario' });
         }
-        res.render('index', { precios: {}, error: "Error de servidor" });
+        res.render('index', { precios: {}, error: "Error de servidor" , fechaBusqueda: null});
     }
 };
