@@ -126,3 +126,25 @@ export const getTasas = async (req, res) => {
         res.render('index', { precios: {}, error: "Error de servidor" , fechaBusqueda: null});
     }
 };
+
+export const getHistorialGrafica = async (req, res) => {
+    try {
+        // Traemos los últimos 30 registros para la gráfica
+        const historial = await Tasa.find()
+            .sort({ fechaActualizacion: -1 })
+            .limit(30);
+            
+        // Reordenamos para que la gráfica vaya de izquierda a derecha (antiguo -> nuevo)
+        const dataGrafica = historial.reverse().map(t => ({
+            // Formateamos la fecha a "DD/MM"
+            fecha: new Date(t.fechaActualizacion).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }),
+            bcv: t.bcv,
+            binance: t.binance,
+            euro: t.euro
+        }));
+
+        res.json(dataGrafica);
+    } catch (error) {
+        res.status(500).json({ error: 'Error obteniendo historial' });
+    }
+};
