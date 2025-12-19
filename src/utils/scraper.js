@@ -62,7 +62,10 @@ async function obtenerPrecioDolar() {
         
         // Objeto base de respuesta
         let resultado = {
-            fecha: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit'}),
+            fecha: new Date().toLocaleString('es-VE', { 
+                day: '2-digit', month: '2-digit', year: '2-digit',
+                timeZone: 'America/Caracas' 
+            }),
             fuente_bcv: `Banco Central de Venezuela`,
             fuente_binance: `Binance P2P (Promedio 10 órdenes)`,
             bcv: null,
