@@ -85,9 +85,11 @@ export const getTasas = async (req, res) => {
 
         // Preparar respuesta para la vista
         const resultado = tasaData ? {
-            fecha: new Date(tasaData.fechaActualizacion).toLocaleDateString('es-VE', { 
-                day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute:'2-digit'
-            }),
+            fecha: new Date(tasaData.fechaActualizacion).toLocaleString('es-VE', { 
+            day: '2-digit', month: '2-digit', year: '2-digit', 
+            hour: '2-digit', minute:'2-digit', hour12: true, // Agregado hour12 para ver PM/AM
+            timeZone: 'America/Caracas' // <--- ESTO ES LA CLAVE
+        }),
             bcv: tasaData.bcv.toFixed(2),
             euro: tasaData.euro.toFixed(2),
             binance: tasaData.binance.toFixed(2),
