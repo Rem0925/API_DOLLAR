@@ -131,15 +131,39 @@ export const getTasas = async (req, res) => {
 
 export const getHistorialGrafica = async (req, res) => {
     try {
-        // Traemos los últimos 30 registros para la gráfica
-        const historial = await Tasa.find()
-            .sort({ fechaActualizacion: -1 })
-            .limit(30);
+        const historial = await Tasa.aggregate([
+            // 1. Ordenar por fecha descendente para que el $group tome el primero (más reciente)
+            { $sort: { fechaActualizacion: -1 } },
+            // 2. Agrupar por Día, Mes y Año (usando la zona horaria de Venezuela)
+            {
+                $group: {
+                    _id: { 
+                        $dateToString: { 
+                            format: "%Y-%m-%d", 
+                            date: "$fechaActualizacion", 
+                            timezone: "America/Caracas" 
+                        } 
+                    },
+                    // Tomamos el primer documento de cada día (el más nuevo de ese día)
+                    bcv: { $first: "$bcv" },
+                    binance: { $first: "$binance" },
+                    euro: { $first: "$euro" },
+                    fechaActualizacion: { $first: "$fechaActualizacion" }
+                }
+            },
+            // 3. Volver a ordenar por fecha para que el límite sea de los días más recientes
+            { $sort: { fechaActualizacion: -1 } },
+            // 4. Ahora sí, limitamos a 30 DÍAS ÚNICOS
+            { $limit: 30 }
+        ]);
             
-        // Reordenamos para que la gráfica vaya de izquierda a derecha (antiguo -> nuevo)
+        // Reordenamos para la gráfica (antiguo -> nuevo)
         const dataGrafica = historial.reverse().map(t => ({
-            // Formateamos la fecha a "DD/MM"
-            fecha: new Date(t.fechaActualizacion).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }),
+            fecha: new Date(t.fechaActualizacion).toLocaleDateString('es-VE', { 
+                day: '2-digit', 
+                month: '2-digit',
+                timeZone: 'America/Caracas' // Importante mantener consistencia
+            }),
             bcv: t.bcv,
             binance: t.binance,
             euro: t.euro
@@ -147,6 +171,7 @@ export const getHistorialGrafica = async (req, res) => {
 
         res.json(dataGrafica);
     } catch (error) {
+        console.error("Error en API Historial:", error);
         res.status(500).json({ error: 'Error obteniendo historial' });
     }
 };
