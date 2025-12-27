@@ -5,7 +5,7 @@ import obtenerPrecioDolar from '../utils/scraper.js';
 export const iniciarCronJobs = () => {
 
     // 1. ACTUALIZACIÓN PROGRAMADA (13:00 y 16:00)
-    cron.schedule('0 13,16 * * *', async () => {
+    cron.schedule('0 9,13,16,20 * * *', async () => {
         console.log('CRON: Buscando nuevos precios...');
         try {
             const datos = await obtenerPrecioDolar();
@@ -38,6 +38,9 @@ export const iniciarCronJobs = () => {
         } catch (error) {
             console.error('Error Cron Update:', error.message);
         }
+    },{
+        scheduled: true,
+        timezone: "America/Caracas" // IMPORTANTE: Para asegurar que sean las horas de Venezuela
     });
 
     // 2. LIMPIEZA AUTOMÁTICA (Día 1 de cada mes)
@@ -45,5 +48,7 @@ export const iniciarCronJobs = () => {
         const fechaLimite = new Date();
         fechaLimite.setFullYear(fechaLimite.getFullYear() - 1);
         await Tasa.deleteMany({ fechaActualizacion: { $lt: fechaLimite } });
+    }, {
+        timezone: "America/Caracas"
     });
 };
