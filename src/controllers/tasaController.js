@@ -1,6 +1,38 @@
 import Tasa from '../models/Tasa.js';
 import obtenerPrecioDolar from '../utils/scraper.js';
 
+const obtenerUltimoCheckpoint = () => {
+    // Hora actual en Venezuela
+    const ahora = new Date().toLocaleString("en-US", { timeZone: "America/Caracas" });
+    const fechaActual = new Date(ahora);
+    
+    // Horarios de actualización definidos (9, 13, 16, 20)
+    const horarios = [9, 13, 16, 20];
+    
+    let ultimoCheckpoint = null;
+
+    // Buscamos el horario más reciente que ya pasó hoy
+    for (let hora of horarios) {
+        let candidato = new Date(fechaActual);
+        candidato.setHours(hora, 0, 0, 0); // Ajustamos a la hora exacta (ej: 09:00:00)
+
+        // Si la hora actual es mayor o igual al candidato, ese es un posible checkpoint
+        if (fechaActual >= candidato) {
+            ultimoCheckpoint = candidato;
+        }
+    }
+
+    // Si no ha pasado ninguna hora hoy (ej: son las 8:00 AM),
+    // el último checkpoint fue ayer a las 20:00
+    if (!ultimoCheckpoint) {
+        ultimoCheckpoint = new Date(fechaActual);
+        ultimoCheckpoint.setDate(ultimoCheckpoint.getDate() - 1);
+        ultimoCheckpoint.setHours(20, 0, 0, 0);
+    }
+
+    return ultimoCheckpoint;
+};
+
 export const getTasas = async (req, res) => {
     try {
         const { fecha, modo, mes, anio } = req.query;
@@ -53,14 +85,19 @@ export const getTasas = async (req, res) => {
         } 
         // B. Si es Home (Último precio)
         else {
-            tasaData = await Tasa.findOne().sort({ fechaActualizacion: -1 });
+           tasaData = await Tasa.findOne().sort({ fechaActualizacion: -1 });
 
-            // Lógica de actualización automática si la data es vieja (> 1h)
-            const ahora = new Date();
-            const ultimaActualizacion = tasaData ? new Date(tasaData.fechaActualizacion) : null;
-            const horasDiferencia = ultimaActualizacion ? (ahora - ultimaActualizacion) / (1000 * 60 * 60) : 999;
+            // 1. Calculamos cuándo debió ser la última actualización según horario Vzla
+            const debeHaberActualizado = obtenerUltimoCheckpoint();
+            
+            // 2. Verificamos la fecha que tenemos en BD (convertimos a objeto Date js)
+            const fechaUltimaBD = tasaData ? new Date(tasaData.fechaActualizacion) : new Date(0);
 
-            if (!tasaData || horasDiferencia > 4.0) {
+            // 3. CONDICIÓN: Si no hay datos O la data en BD es más vieja que el último checkpoint
+            // Ejemplo: Son las 10am, el checkpoint fue 9am. Si en BD dice 8am, entra aquí.
+            if (!tasaData || fechaUltimaBD < debeHaberActualizado) {
+                
+                console.log("⚠️ Detectada falta de actualización (Fallo de Cron). Actualizando...");
                 const liveData = await obtenerPrecioDolar();
                 
                 if (!liveData.error) {
@@ -75,8 +112,8 @@ export const getTasas = async (req, res) => {
                     try {
                         await Tasa.create(nuevoDoc);
                         tasaData = nuevoDoc;
+                        console.log("✅ Recuperación exitosa en Controller");
                     } catch (e) {
-                        // Si falla el guardado (duplicado), mostramos el objeto igual
                         tasaData = nuevoDoc; 
                     }
                 }

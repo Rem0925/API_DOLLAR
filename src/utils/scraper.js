@@ -20,7 +20,7 @@ async function obtenerPromedioBinance() {
             "payTypes": [], 
             "publisherType": null,
             "rows": 20, 
-            "tradeType": "BUY"
+            "tradeType": "SELL"
         };
 
         const respuesta = await fetch(URL_BINANCE, {
