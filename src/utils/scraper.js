@@ -5,6 +5,25 @@ import * as cheerio from 'cheerio';
 const URL_BCV = 'https://www.bcv.org.ve/'; 
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
 
+function parsearFechaBCV(texto) {
+    const meses = {
+        'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
+        'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
+    };
+    try {
+        // Ejemplo: "Lunes, 05 Enero 2026" -> ["05", "Enero", "2026"]
+        const partes = texto.match(/(\d{2})\s(\w+)\s(\d{4})/);
+        if (partes) {
+            const dia = parseInt(partes[1]);
+            const mes = meses[partes[2]];
+            const anio = parseInt(partes[3]);
+            // Retornamos la fecha a las 00:00:00 hora Vzla (UTC-4)
+            return new Date(Date.UTC(anio, mes, dia, 4, 0, 0));
+        }
+    } catch (e) { console.error("Error parseando fecha valor:", e); }
+    return new Date(); // Fallback a hoy
+}
+
 async function obtenerPromedioBinance() {
     try {
         const headers = {
@@ -57,9 +76,11 @@ async function obtenerPrecioDolar() {
         const $ = cheerio.load(dataBCV);
         const selectorPrecioEu = '#euro .centrado strong';
         const selectorPrecio = '#dolar .centrado strong'; 
+        const selectorFechaValor = '.pull-right.dinpro.center-block span';
         const elementoPrecio = $(selectorPrecio).first();
         const elementoPrecioEu = $(selectorPrecioEu).first();
-        
+        const textoFechaValor = $(selectorFechaValor).text().trim();
+
         // Objeto base de respuesta
         let resultado = {
             fecha: new Date().toLocaleString('es-VE', { 
@@ -71,6 +92,7 @@ async function obtenerPrecioDolar() {
             bcv: null,
             euro: null,
             binance: null,
+            fechaValor: parsearFechaBCV(textoFechaValor)
         };
 
         // Procesar BCV
