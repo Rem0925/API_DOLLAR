@@ -102,10 +102,18 @@ export const getTasas = async (req, res) => {
         }).sort({ fechaValor: 1 });
 
         const resultado = tasaData ? {
-            fecha: new Date(tasaData.fechaValor || tasaData.fechaActualizacion).toLocaleString('es-VE', { 
-                day: '2-digit', month: '2-digit', year: '2-digit', 
+            // Tomamos el DÍA de la validez (fechaValor) pero la HORA de la captura (fechaActualizacion)
+            fecha: `${new Date(tasaData.fechaValor || tasaData.fechaActualizacion).toLocaleDateString('es-VE', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: '2-digit', 
                 timeZone: 'America/Caracas'
-            }),
+            })} - ${new Date(tasaData.fechaActualizacion).toLocaleTimeString('es-VE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'America/Caracas'
+            })}`,
             bcv: tasaData.bcv.toFixed(2),
             euro: tasaData.euro.toFixed(2),
             binance: tasaData.binance.toFixed(2),
