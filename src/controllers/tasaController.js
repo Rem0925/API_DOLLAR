@@ -52,6 +52,8 @@ export const getTasas = async (req, res) => {
         let tasaData;
         const ahoraVzla = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }));
         ahoraVzla.setHours(0, 0, 0, 0);
+        const diaSemana = ahoraVzla.getDay();
+        const esFinDeSemana = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
 
         if (fecha) {
             // Búsqueda histórica: Prioriza fechaValor, cae en fechaActualizacion
@@ -117,7 +119,7 @@ export const getTasas = async (req, res) => {
             bcv: tasaData.bcv.toFixed(2),
             euro: tasaData.euro.toFixed(2),
             binance: tasaData.binance.toFixed(2),
-            tieneProximo: !!tasaFutura && proximo !== 'true',
+            tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== 'true',
             esTasaProxima: proximo === 'true',
             conversion: {}
         } : {};
