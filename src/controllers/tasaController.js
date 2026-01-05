@@ -130,43 +130,30 @@ export const getTasas = async (req, res) => {
 export const getHistorialGrafica = async (req, res) => {
     try {
         const historial = await Tasa.aggregate([
+            // 1. Ordenamos por fechaValor (ahora que todos lo tienen)
+            { $sort: { fechaValor: -1 } },
+            // 2. Agrupamos por día
             {
-                // PASO 1: Aseguramos que los campos sean tratados como fechas y creamos la unificada
-                $addFields: {
-                    fechaConvertidaValor: { $toDate: "$fechaValor" },
-                    fechaConvertidaAct: { $toDate: "$fechaActualizacion" }
-                }
-            },
-            {
-                $addFields: {
-                    // Prioridad: fechaValor -> fechaActualizacion
-                    fechaReal: { $ifNull: ["$fechaConvertidaValor", "$fechaConvertidaAct"] }
-                }
-            },
-            // PASO 2: Ordenamos antes de agrupar para que $first agarre el registro más reciente del día
-            { $sort: { fechaReal: -1 } },
-            {
-                // PASO 3: Agrupamos por año-mes-día en la zona horaria de Venezuela
                 $group: {
                     _id: { 
                         $dateToString: { 
                             format: "%Y-%m-%d", 
-                            date: "$fechaReal", 
+                            date: "$fechaValor", 
                             timezone: "America/Caracas" 
                         } 
                     },
                     bcv: { $first: "$bcv" },
                     binance: { $first: "$binance" },
                     euro: { $first: "$euro" },
-                    fechaReferencia: { $first: "$fechaReal" }
+                    fechaReferencia: { $first: "$fechaValor" }
                 }
             },
-            // PASO 4: Ordenamos cronológicamente para el gráfico
+            // 3. Ordenamos de más nuevo a más viejo para el límite
             { $sort: { _id: -1 } },
             { $limit: 30 }
         ]);
             
-        // Transformamos para el frontend
+        // 4. Invertimos para que la gráfica se dibuje de izquierda a derecha
         const dataGrafica = historial.reverse().map(t => ({
             fecha: new Date(t.fechaReferencia).toLocaleDateString('es-VE', { 
                 day: '2-digit', 
