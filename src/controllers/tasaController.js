@@ -27,6 +27,13 @@ export const getTasas = async (req, res) => {
     try {
         const { fecha, modo, mes, anio, proximo } = req.query;
 
+        const ahoraVzla = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }));
+        const finHoy = new Date(ahoraVzla);
+        finHoy.setHours(23, 59, 59, 999); // Límite para detectar tasas "futuras"
+
+        const diaSemana = ahoraVzla.getDay(); // 0=Dom, 5=Vie, 6=Sáb
+        const esFinDeSemana = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
+
         // --- MODO CALENDARIO: Busca en ambos campos para no perder días ---
         if (modo === 'calendario') {
             const year = parseInt(anio);
@@ -50,10 +57,6 @@ export const getTasas = async (req, res) => {
         }
 
         let tasaData;
-        const ahoraVzla = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }));
-        ahoraVzla.setHours(0, 0, 0, 0);
-        const diaSemana = ahoraVzla.getDay();
-        const esFinDeSemana = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
 
         if (fecha) {
             // Búsqueda histórica: Prioriza fechaValor, cae en fechaActualizacion
@@ -72,10 +75,33 @@ export const getTasas = async (req, res) => {
             }).sort({ fechaValor: -1, fechaActualizacion: -1 });
         } 
         else {
+            const ultimoRegistro = await Tasa.findOne().sort({ fechaActualizacion: -1 });
+
             if(proximo === "true"){
-                tasaData = await Tasa.findOne({ fechaValor: { $exists: true } }).sort({ fechaValor: -1 });
+                tasaData = ultimoRegistro;
             } else {
-                tasaData = await Tasa.findOne().sort({ fechaActualizacion: -1 });
+                // MODO NORMAL (Viernes/Fin de semana)
+                if (ultimoRegistro && ultimoRegistro.fechaValor > finHoy) {
+                    const registroVigente = await Tasa.findOne({ 
+                        fechaValor: { $lte: finHoy } 
+                    }).sort({ fechaValor: -1, fechaActualizacion: -1 });
+
+                    if (registroVigente) {
+                        // C. COMBINACIÓN MÁGICA:
+                        // Usamos Binance del registro más nuevo, pero BCV/Euro del registro del viernes.
+                        tasaData = {
+                            ...ultimoRegistro.toObject(),
+                            bcv: registroVigente.bcv,
+                            euro: registroVigente.euro,
+                            fechaValor: registroVigente.fechaValor
+                        };
+                    } else {
+                        tasaData = ultimoRegistro;
+                    }
+                } else {
+                    // Si no es fecha futura, usamos el último normal
+                    tasaData = ultimoRegistro;
+                }
             }
 
             const debeHaberActualizado = obtenerUltimoCheckpoint();
@@ -92,8 +118,14 @@ export const getTasas = async (req, res) => {
                         fechaValor: liveData.fechaValor
                     };
                     try {
-                        await Tasa.create(nuevoDoc);
-                        tasaData = nuevoDoc;
+                        const creado = await Tasa.create(nuevoDoc);
+                        // Aplicar fusión inmediata si el nuevo registro es futuro
+                        if (creado.fechaValor > finHoy && proximo !== "true") {
+                            const vig = await Tasa.findOne({ fechaValor: { $lte: finHoy } }).sort({ fechaValor: -1 });
+                            tasaData = vig ? { ...creado.toObject(), bcv: vig.bcv, euro: vig.euro, fechaValor: vig.fechaValor } : creado;
+                        } else {
+                            tasaData = creado;
+                        }
                     } catch (e) { tasaData = nuevoDoc; }
                 }
             }
