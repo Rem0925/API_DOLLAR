@@ -1,28 +1,12 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import https from 'https';
 
 //URLS
 const URL_BCV = 'https://www.bcv.org.ve/'; 
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
 
-function parsearFechaBCV(texto) {
-    const meses = {
-        'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
-        'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
-    };
-    try {
-        // Ejemplo: "Lunes, 05 Enero 2026" -> ["05", "Enero", "2026"]
-        const partes = texto.match(/(\d{2})\s(\w+)\s(\d{4})/);
-        if (partes) {
-            const dia = parseInt(partes[1]);
-            const mes = meses[partes[2]];
-            const anio = parseInt(partes[3]);
-            // Retornamos la fecha a las 00:00:00 hora Vzla (UTC-4)
-            return new Date(Date.UTC(anio, mes, dia, 4, 0, 0));
-        }
-    } catch (e) { console.error("Error parseando fecha valor:", e); }
-    return new Date(); // Fallback a hoy
-}
+const agent = new https.Agent({ rejectUnauthorized: false });
 
 async function obtenerPromedioBinance() {
     try {
@@ -67,19 +51,31 @@ async function obtenerPromedioBinance() {
 async function obtenerPrecioDolar() {
     try {
         const [respuestaBCV, precioBinanceStr] = await Promise.all([
-            fetch(URL_BCV),
+            fetch(URL_BCV, { agent }),
             obtenerPromedioBinance()
         ]);
 
         // --- LÓGICA BCV ---
         const dataBCV = await respuestaBCV.text();
         const $ = cheerio.load(dataBCV);
+
         const selectorPrecioEu = '#euro .centrado strong';
         const selectorPrecio = '#dolar .centrado strong'; 
-        const selectorFechaValor = '.pull-right.dinpro.center-block span';
+        const selectorFechaValor = '.date-display-single';
+
         const elementoPrecio = $(selectorPrecio).first();
         const elementoPrecioEu = $(selectorPrecioEu).first();
-        const textoFechaValor = $(selectorFechaValor).text().trim();
+        const elementoFecha = $(selectorFechaValor).first();
+
+        const fechaISO = elementoFecha.attr('content'); // Extrae "2026-01-07T00:00:00-04:00"
+        let fechaValorFinal;
+
+        if (fechaISO) {
+            fechaValorFinal = new Date(fechaISO); // JS lo convierte automáticamente
+        } else {
+            // Fallback por si el atributo content falla
+            fechaValorFinal = new Date(); 
+        }
 
         // Objeto base de respuesta
         let resultado = {
@@ -92,7 +88,7 @@ async function obtenerPrecioDolar() {
             bcv: null,
             euro: null,
             binance: null,
-            fechaValor: parsearFechaBCV(textoFechaValor)
+            fechaValor: fechaValorFinal
         };
 
         // Procesar BCV
