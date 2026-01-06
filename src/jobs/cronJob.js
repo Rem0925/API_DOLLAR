@@ -27,7 +27,8 @@ export const iniciarCronJobs = () => {
                 const ahora = new Date();
                 const nuevoDoc = {
                     ...nuevasTasas,
-                    fechaActualizacion: ahora
+                    fechaActualizacion: ahora,
+                    fechaValor: datos.fechaValor
                 };
 
                 await Tasa.create(nuevoDoc);
