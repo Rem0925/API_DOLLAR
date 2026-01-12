@@ -81,11 +81,11 @@ export const getTasas = async (req, res) => {
                 tasaData = ultimoRegistro;
             } else {
                 // MODO NORMAL (Viernes/Fin de semana)
-                if (ultimoRegistro && ultimoRegistro.fechaValor > finHoy) {
+                if ((ultimoRegistro && ultimoRegistro.fechaValor > finHoy) && esFinDeSemana) {
                     const registroVigente = await Tasa.findOne({ 
                         fechaValor: { $lte: finHoy } 
                     }).sort({ fechaValor: -1, fechaActualizacion: -1 });
-
+                    
                     if (registroVigente) {
                         // C. COMBINACIÓN MÁGICA:
                         // Usamos Binance del registro más nuevo, pero BCV/Euro del registro del viernes.
@@ -172,7 +172,7 @@ export const getTasas = async (req, res) => {
 export const getHistorialGrafica = async (req, res) => {
     try {
         const historial = await Tasa.aggregate([
-            // 1. Ordenamos por fechaValor (ahora que todos lo tienen)
+            // 1. Ordenamos por fechaValor 
             { $sort: { fechaValor: -1 } },
             // 2. Agrupamos por día
             {
