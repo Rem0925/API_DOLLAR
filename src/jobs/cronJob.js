@@ -4,8 +4,8 @@ import obtenerPrecioDolar from '../utils/scraper.js';
 
 export const iniciarCronJobs = () => {
 
-    // 1. ACTUALIZACIÓN PROGRAMADA (13:00 y 16:00)
-    cron.schedule('0 9,13,16,20 * * *', async () => {
+
+    cron.schedule('0 6-22 * * *', async () => {
         console.log('CRON: Buscando nuevos precios...');
         try {
             const datos = await obtenerPrecioDolar();
