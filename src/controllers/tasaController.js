@@ -39,48 +39,42 @@ export const getTasas = async (req, res) => {
     const esFinDeSemana = diaSemana === 5 || diaSemana === 6 || diaSemana === 0;
 
     // --- MODO CALENDARIO: Busca en ambos campos para no perder días ---
-    // --- MODO CALENDARIO: Busca en ambos campos para no perder días ---
-        // --- MODO CALENDARIO: Busca en ambos campos para no perder días ---
-        if (modo === 'calendario') {
-            const year = parseInt(anio);
-            const month = parseInt(mes);
-            const inicioMes = new Date(Date.UTC(year, month, 1, 4, 0, 0, 0));
-            // Cambiamos a $lt (menor estricto) para no incluir el primer milisegundo del mes siguiente
-            const finMes = new Date(Date.UTC(year, month + 1, 1, 4, 0, 0, 0));
+    if (modo === 'calendario') {
+        const year = parseInt(anio);
+        const month = parseInt(mes);
+        const inicioMes = new Date(Date.UTC(year, month, 1, 4, 0, 0, 0));
+        // Cambiamos a $lt (menor estricto) para no incluir el primer milisegundo del mes siguiente
+        const finMes = new Date(Date.UTC(year, month + 1, 1, 4, 0, 0, 0));
 
-            const registros = await Tasa.find({
-                $or: [
-                    { fechaActualizacion: { $gte: inicioMes, $lt: finMes } },
-                    { fechaValor: { $gte: inicioMes, $lt: finMes } }
-                ]
-            }).select('fechaActualizacion fechaValor');
+        const registros = await Tasa.find({
+            $or: [
+                { fechaActualizacion: { $gte: inicioMes, $lt: finMes } },
+                { fechaValor: { $gte: inicioMes, $lt: finMes } }
+            ]
+        }).select('fechaActualizacion fechaValor');
 
-            // Formateador estricto para la zona horaria de Caracas
-            const formatter = new Intl.DateTimeFormat('es-VE', { 
-                timeZone: 'America/Caracas', 
-                day: 'numeric' 
-            });
+        // Formateador estricto para la zona horaria de Caracas
+        const formatter = new Intl.DateTimeFormat('es-VE', { 
+            timeZone: 'America/Caracas', 
+            day: 'numeric' 
+        });
 
-            const diasConData = new Set();
+        const diasConData = new Set();
 
-            registros.forEach(r => {
-                // Evaluamos fechaActualizacion: que esté en el mes Y que NO supere el día de hoy
-                if (r.fechaActualizacion && r.fechaActualizacion >= inicioMes && r.fechaActualizacion < finMes) {
-                    if (r.fechaActualizacion <= finHoy) {
-                        diasConData.add(parseInt(formatter.format(new Date(r.fechaActualizacion))));
-                    }
-                }
-                
-                // Evaluamos fechaValor: que esté en el mes Y que NO supere el día de hoy
-                if (r.fechaValor && r.fechaValor >= inicioMes && r.fechaValor < finMes) {
-                    if (r.fechaValor <= finHoy) {
-                        diasConData.add(parseInt(formatter.format(new Date(r.fechaValor))));
-                    }
-                }
-            });
+        registros.forEach(r => {
+            // Todo en un solo IF: Que exista la fecha Y esté dentro del mes Y NO sea del futuro
+            if (r.fechaActualizacion && r.fechaActualizacion >= inicioMes && r.fechaActualizacion < finMes && r.fechaActualizacion <= finHoy) {
+                diasConData.add(parseInt(formatter.format(new Date(r.fechaActualizacion))));
+            }
             
-            return res.json({ dias: [...diasConData] });
-        }
+            // Lo mismo para la fechaValor
+            if (r.fechaValor && r.fechaValor >= inicioMes && r.fechaValor < finMes && r.fechaValor <= finHoy) {
+                diasConData.add(parseInt(formatter.format(new Date(r.fechaValor))));
+            }
+        });
+        
+        return res.json({ dias: [...diasConData] });
+    }
 
     let tasaData;
 
@@ -182,27 +176,45 @@ export const getTasas = async (req, res) => {
       fechaValor: { $gt: ahoraVzla },
     }).sort({ fechaValor: 1 });
 
-    const resultado = tasaData ? {
-    // Tomamos SIEMPRE la fecha de actualización para que el día mostrado coincida con la búsqueda
-    fecha: `${new Date(tasaData.fechaActualizacion).toLocaleDateString('es-VE', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: '2-digit', 
-                timeZone: 'America/Caracas'
-            })} - ${new Date(tasaData.fechaActualizacion).toLocaleTimeString('es-VE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'America/Caracas'
-            })}`,
-          bcv: tasaData.bcv.toFixed(2),
-          euro: tasaData.euro.toFixed(2),
-          binance: tasaData.binance.toFixed(2),
-          tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== "true",
-          esTasaProxima: proximo === "true",
-          conversion: {},
+    // --- LÓGICA INTELIGENTE PARA MOSTRAR LA FECHA CORRECTA ---
+    let fechaParaMostrar = tasaData ? new Date(tasaData.fechaActualizacion) : new Date();
+
+    if (tasaData) {
+        if (fecha) {
+            // Si es búsqueda histórica, verificamos si fue la fechaValor la que hizo el match
+            const partes = fecha.split('-');
+            const inicioDia = new Date(Date.UTC(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]), 4, 0, 0));
+            const finDia = new Date(Date.UTC(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]) + 1, 4, 0, 0));
+            
+            if (tasaData.fechaValor >= inicioDia && tasaData.fechaValor < finDia) {
+                fechaParaMostrar = new Date(tasaData.fechaValor); // Forzamos a que el día mostrado sea el día buscado
+            }
+        } else if (proximo === 'true') {
+            // Si estamos viendo la tasa del lunes por adelantado, mostramos la fecha del lunes
+            fechaParaMostrar = new Date(tasaData.fechaValor);
         }
-      : {};
+    }
+
+    const resultado = tasaData ? {
+        // Usamos 'fechaParaMostrar' para el Día/Mes/Año y 'fechaActualizacion' para la Hora exacta
+        fecha: `${fechaParaMostrar.toLocaleDateString('es-VE', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: '2-digit', 
+            timeZone: 'America/Caracas'
+        })} - ${new Date(tasaData.fechaActualizacion).toLocaleTimeString('es-VE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'America/Caracas'
+        })}`,
+        bcv: tasaData.bcv.toFixed(2),
+        euro: tasaData.euro.toFixed(2),
+        binance: tasaData.binance.toFixed(2),
+        tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== "true",
+        esTasaProxima: proximo === "true",
+        conversion: {}
+    } : {};
 
     res.format({
       json: () => res.json(resultado),
