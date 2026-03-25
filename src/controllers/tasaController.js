@@ -181,14 +181,16 @@ export const getTasas = async (req, res) => {
 
     if (tasaData) {
         if (fecha) {
-            // Si es búsqueda histórica, verificamos si fue la fechaValor la que hizo el match
+            // Aplicando tu idea: Forzamos la fecha exacta que pidió la App en el calendario
             const partes = fecha.split('-');
-            const inicioDia = new Date(Date.UTC(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]), 4, 0, 0));
-            const finDia = new Date(Date.UTC(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]) + 1, 4, 0, 0));
+            const year = parseInt(partes[0]);
+            const month = parseInt(partes[1]) - 1;
+            const day = parseInt(partes[2]);
             
-            if (tasaData.fechaValor >= inicioDia && tasaData.fechaValor < finDia) {
-                fechaParaMostrar = new Date(tasaData.fechaValor); // Forzamos a que el día mostrado sea el día buscado
-            }
+            // Creamos la fecha al mediodía (12:00) UTC. Así, cuando el formateador de Caracas 
+            // le reste 4 horas, seguirán siendo las 08:00 AM del MISMO DÍA, 
+            // garantizando 100% que nunca brincará al día anterior o siguiente en la App.
+            fechaParaMostrar = new Date(Date.UTC(year, month, day, 12, 0, 0));
         } else if (proximo === 'true') {
             // Si estamos viendo la tasa del lunes por adelantado, mostramos la fecha del lunes
             fechaParaMostrar = new Date(tasaData.fechaValor);
