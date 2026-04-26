@@ -2,7 +2,6 @@ import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import https from 'https';
 
-//URLS
 const URL_BCV = 'https://www.bcv.org.ve/'; 
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
 
@@ -23,7 +22,7 @@ async function obtenerPromedioBinance(tradeType = "BUY") {
             "payTypes": [], 
             "publisherType": null,
             "rows": 10, 
-            "tradeType": tradeType // <-- Ahora es dinámico ('BUY' o 'SELL')
+            "tradeType": tradeType
         };
 
         const respuesta = await fetch(URL_BINANCE, { method: 'POST', headers, body: JSON.stringify(payload) });
@@ -36,17 +35,22 @@ async function obtenerPromedioBinance(tradeType = "BUY") {
         }
         return null;
     } catch (error) {
+        console.error(`Error en Binance ${tradeType}:`, error.message);
         return null;
     }
 }
 
 async function obtenerPrecioDolar() {
     try {
-        const [respuestaBCV, precioBinanceCompra, precioBinanceVenta] = await Promise.all([
-            fetch(URL_BCV, { agent }),
-            obtenerPromedioBinance("BUY"),  // Lo que la gente compra
-            obtenerPromedioBinance("SELL")  // Lo que la gente vende
-        ]);
+        // --- 1. PETICIONES EN FILA INDIA PARA NO ALERTAR A BINANCE EN RENDER ---
+        const respuestaBCV = await fetch(URL_BCV, { agent });
+        
+        const precioBinanceCompra = await obtenerPromedioBinance("BUY");
+        
+        // Pausa táctica de 1.5 segundos para parecer un humano
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const precioBinanceVenta = await obtenerPromedioBinance("SELL");
 
         // --- LÓGICA BCV ---
         const dataBCV = await respuestaBCV.text();
@@ -60,17 +64,9 @@ async function obtenerPrecioDolar() {
         const elementoPrecioEu = $(selectorPrecioEu).first();
         const elementoFecha = $(selectorFechaValor).first();
 
-        const fechaISO = elementoFecha.attr('content'); // Extrae "2026-01-07T00:00:00-04:00"
-        let fechaValorFinal;
+        const fechaISO = elementoFecha.attr('content'); 
+        let fechaValorFinal = fechaISO ? new Date(fechaISO) : new Date();
 
-        if (fechaISO) {
-            fechaValorFinal = new Date(fechaISO); // JS lo convierte automáticamente
-        } else {
-            // Fallback por si el atributo content falla
-            fechaValorFinal = new Date(); 
-        }
-
-        // Objeto base de respuesta
         let resultado = {
             fecha: new Date().toLocaleString('es-VE', { 
                 day: '2-digit', month: '2-digit', year: '2-digit',
@@ -85,7 +81,6 @@ async function obtenerPrecioDolar() {
             fechaValor: fechaValorFinal
         };
 
-        // Procesar BCV
         if (elementoPrecio.length > 0 && elementoPrecioEu.length > 0) {
             let precioStr = elementoPrecio.text().trim();
             let percioEu = elementoPrecioEu.text().trim();
@@ -93,12 +88,10 @@ async function obtenerPrecioDolar() {
             let precioLimpio = precioStr.replace(',', '.').trim();
             const precioBCV = parseFloat(precioLimpio);
             
-            // BORRA la antigua línea de const precioBinance = ... 
-            
-            // REEMPLAZA EL IF POR ESTE:
             if (!isNaN(precioBCV) && precioBinanceCompra !== null){
                 resultado.bcv = precioBCV.toFixed(2);
                 resultado.binance = precioBinanceCompra.toFixed(2);
+                // Si por alguna razón extrema Binance vuelve a fallar, usa el de compra de respaldo
                 resultado.binance_venta = precioBinanceVenta ? precioBinanceVenta.toFixed(2) : precioBinanceCompra.toFixed(2);
                 resultado.euro = precioLimpioEu.toFixed(2);
             }
@@ -107,9 +100,7 @@ async function obtenerPrecioDolar() {
 
     } catch (error) {
         console.error("Error general:", error.message);
-        return { 
-            error: `Error al obtener las tasas: ${error.message}` 
-        };
+        return { error: `Error al obtener las tasas: ${error.message}` };
     }
 }
 
