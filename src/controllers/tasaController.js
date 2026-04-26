@@ -143,6 +143,7 @@ export const getTasas = async (req, res) => {
           const nuevoDoc = {
             bcv: parseFloat(liveData.bcv),
             binance: parseFloat(liveData.binance),
+            binance_venta: parseFloat(liveData.binance_venta || liveData.binance), 
             euro: parseFloat(liveData.euro),
             fechaActualizacion: new Date(),
             fechaValor: liveData.fechaValor,
@@ -213,6 +214,7 @@ export const getTasas = async (req, res) => {
         bcv: tasaData.bcv.toFixed(2),
         euro: tasaData.euro.toFixed(2),
         binance: tasaData.binance.toFixed(2),
+        binance_venta: tasaData.binance_venta ? tasaData.binance_venta.toFixed(2) : tasaData.binance.toFixed(2),
         tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== "true",
         esTasaProxima: proximo === "true",
         conversion: {}
@@ -252,6 +254,7 @@ export const getHistorialGrafica = async (req, res) => {
           },
           bcv: { $first: "$bcv" },
           binance: { $first: "$binance" },
+          binance_venta: { $first: "$binance_venta" },
           euro: { $first: "$euro" },
           fechaReferencia: { $first: "$fechaValor" },
         },
@@ -270,6 +273,7 @@ export const getHistorialGrafica = async (req, res) => {
       }),
       bcv: t.bcv,
       binance: t.binance,
+      binance_venta: t.binance_venta || t.binance, 
       euro: t.euro,
     }));
 

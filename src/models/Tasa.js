@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const tasaSchema = new mongoose.Schema({
     bcv: { type: Number, required: true },
     binance: { type: Number, required: true },
+    binance_venta: { type: Number, required: false },
     euro: { type: Number, required: true },
     fechaActualizacion: { type: Date, default: Date.now, index: true },
     fechaValor: { type: Date, required: true, index: true }
