@@ -8,11 +8,11 @@ const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search
 
 const agent = new https.Agent({ rejectUnauthorized: false });
 
-async function obtenerPromedioBinance() {
+async function obtenerPromedioBinance(tradeType = "BUY") {
     try {
         const headers = {
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."
         };
 
         const payload = {
@@ -23,36 +23,29 @@ async function obtenerPromedioBinance() {
             "payTypes": [], 
             "publisherType": null,
             "rows": 10, 
-            "tradeType": "BUY"
+            "tradeType": tradeType // <-- Ahora es dinámico ('BUY' o 'SELL')
         };
 
-        const respuesta = await fetch(URL_BINANCE, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(payload)
-        });
-
+        const respuesta = await fetch(URL_BINANCE, { method: 'POST', headers, body: JSON.stringify(payload) });
         const data = await respuesta.json();
 
         if (data.data && data.data.length > 0) {
             const precios = data.data.map(ad => parseFloat(ad.adv.price));
             const suma = precios.reduce((a, b) => a + b, 0);
-            const promedio = (suma / precios.length);
-            return promedio;
+            return (suma / precios.length);
         }
         return null;
-
     } catch (error) {
-        console.error("Error obteniendo Binance:", error.message);
         return null;
     }
 }
 
 async function obtenerPrecioDolar() {
     try {
-        const [respuestaBCV, precioBinanceStr] = await Promise.all([
+        const [respuestaBCV, precioBinanceCompra, precioBinanceVenta] = await Promise.all([
             fetch(URL_BCV, { agent }),
-            obtenerPromedioBinance()
+            obtenerPromedioBinance("BUY"),  // Lo que la gente compra
+            obtenerPromedioBinance("SELL")  // Lo que la gente vende
         ]);
 
         // --- LÓGICA BCV ---
@@ -88,6 +81,7 @@ async function obtenerPrecioDolar() {
             bcv: null,
             euro: null,
             binance: null,
+            binance_venta: null, 
             fechaValor: fechaValorFinal
         };
 
@@ -98,11 +92,14 @@ async function obtenerPrecioDolar() {
             let precioLimpioEu = parseFloat(percioEu.replace(',', '.').trim());
             let precioLimpio = precioStr.replace(',', '.').trim();
             const precioBCV = parseFloat(precioLimpio);
-            const precioBinance = parseFloat(precioBinanceStr);
-
-            if (!isNaN(precioBCV) && !isNaN(precioBinanceStr)){
+            
+            // BORRA la antigua línea de const precioBinance = ... 
+            
+            // REEMPLAZA EL IF POR ESTE:
+            if (!isNaN(precioBCV) && precioBinanceCompra !== null){
                 resultado.bcv = precioBCV.toFixed(2);
-                resultado.binance = precioBinance.toFixed(2);
+                resultado.binance = precioBinanceCompra.toFixed(2);
+                resultado.binance_venta = precioBinanceVenta ? precioBinanceVenta.toFixed(2) : precioBinanceCompra.toFixed(2);
                 resultado.euro = precioLimpioEu.toFixed(2);
             }
         }
