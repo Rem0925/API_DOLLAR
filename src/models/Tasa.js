@@ -5,6 +5,7 @@ const tasaSchema = new mongoose.Schema({
     binance: { type: Number, required: true },
     binance_venta: { type: Number, required: false },
     euro: { type: Number, required: true },
+    cop: { type: Number, required: false },
     fechaActualizacion: { type: Date, default: Date.now, index: true },
     fechaValor: { type: Date, required: true, index: true }
 }); 

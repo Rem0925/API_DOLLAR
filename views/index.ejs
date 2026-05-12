@@ -3,246 +3,518 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dólar Monitor</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>API Dólar - Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
     <style>
         :root {
-            --bs-body-bg: #f3f4f6;
-            --bs-body-font-family: 'Inter', sans-serif;
-            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
+            --bg-main: #f8fafc;
+            --sidebar-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #0ea5e9;
+            --code-bg: #0f172a;
         }
-        body { color: #1f2937; background-color: var(--bs-body-bg); font-family: var(--bs-body-font-family); }
-        .main-container { max-width: 600px; }
-        .app-card { border: none; border-radius: 20px; background: #ffffff; box-shadow: var(--card-shadow); }
-        .rate-card { padding: 1.25rem; height: 100%; border: 1px solid rgba(0,0,0,0.02); }
-        .rate-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 600; }
-        .rate-value { font-size: 1.5rem; font-weight: 800; }
-        .currency-symbol { font-size: 0.8rem; font-weight: 500; color: #9ca3af; }
-        .form-control-lg, .form-select-lg { border-radius: 12px; border: 1px solid #e5e7eb; padding: 1rem; background-color: #f9fafb; }
-        .btn-action { border-radius: 12px; padding: 1rem; font-weight: 600; background-color: #111827; border: none; color: white; width: 100%; }
-        .btn-action:hover { background-color: #000; }
-        .result-display { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px; }
-
-        /* Estilos del Calendario en Modal */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 10px; }
-        .cal-day-name { text-align: center; font-size: 0.8rem; font-weight: bold; color: #6b7280; margin-bottom: 5px; }
-        .cal-day { 
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
-            border-radius: 8px; font-size: 0.9rem; color: #d1d5db; position: relative; 
-            transition: all 0.2s;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
         }
-        .cal-day.active { background-color: #f3f4f6; color: #1f2937; cursor: pointer; font-weight: 600; }
-        .cal-day.active:hover { background-color: #10b981; color: white; transform: scale(1.05); }
-        .cal-dot { width: 4px; height: 4px; background-color: #10b981; border-radius: 50%; position: absolute; bottom: 5px; }
-        .cal-day.active:hover .cal-dot { background-color: white; }
+        .sidebar {
+            width: 300px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .nav-list {
+            padding: 1rem 0;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .nav-group-title {
+            padding: 0 1.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            margin-top: 1rem;
+            letter-spacing: 0.05em;
+        }
+        .nav-group-title:first-child { margin-top: 0; }
+        .nav-item {
+            padding: 0.6rem 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+        }
+        .nav-item:hover {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+        }
+        .nav-item.active {
+            color: var(--accent);
+            border-left-color: var(--accent);
+            background-color: #f0f9ff;
+        }
+        .method-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .method-get { background: #e0f2fe; color: #0284c7; }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .content-container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem 3rem;
+        }
+        
+        h2.endpoint-title { font-weight: 700; font-size: 1.5rem; margin-bottom: 0.5rem; }
+        p.endpoint-desc { color: var(--text-muted); margin-bottom: 2rem; }
+        
+        .url-bar {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.4rem 0.4rem 0.4rem 1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+        .url-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            flex: 1;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+        .url-text span { color: var(--text-main); font-weight: 600; }
+        .btn-send {
+            background: var(--text-main);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .btn-send:hover { background: #334155; }
+        
+        .params-section {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none; /* Se oculta si no hay params */
+        }
+        .params-section h6 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+        
+        .response-container {
+            background: var(--code-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #1e293b;
+        }
+        .response-header {
+            background: #1e293b;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            font-size: 0.8rem;
+        }
+        .status-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .status-badge {
+            font-weight: 600;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .status-badge .dot {
+            width: 8px; height: 8px; background: #10b981; border-radius: 50%;
+        }
+        .time-badge { color: #94a3b8; font-family: 'JetBrains Mono', monospace; }
+        
+        pre {
+            margin: 0;
+            padding: 1.5rem;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            max-height: 500px;
+        }
+        
+        /* Syntax Highlighting */
+        .string { color: #7dd3fc; }
+        .number { color: #fde047; }
+        .boolean { color: #fca5a5; }
+        .null { color: #94a3b8; font-style: italic; }
+        .key { color: #a7f3d0; }
+        
+        /* Form Inputs */
+        .form-control, .form-select {
+            font-size: 0.9rem;
+            border-color: var(--border-color);
+        }
+        .form-control:focus, .form-select:focus {
+            box-shadow: none;
+            border-color: var(--accent);
+        }
     </style>
 </head>
-<body class="d-flex flex-column min-vh-100 justify-content-center py-4">
+<body>
 
-    <div class="container main-container">
-        
-        <div class="d-flex justify-content-between align-items-end mb-4 px-2">
-            <div>
-                <h6 class="text-uppercase text-muted fw-bold mb-0 small">API</h6>
-                <h1 class="fw-bold mb-0 text-dark">Monitor</h1>
-            </div>
-            <div class="text-end">
-                <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="cursor: pointer;" onclick="abrirCalendario()">
-                    <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-calendar3"></i></span>
-                    <input type="text" class="form-control border-0 bg-white" 
-                           value="<%= fechaBusqueda ? fechaBusqueda : 'Hoy' %>" 
-                           readonly style="max-width: 120px; cursor: pointer; font-weight: 500;">
-                </div>
-                <% if (fechaBusqueda) { %>
-                    <div class="mt-1"><a href="/api/dolar/ves" class="badge bg-dark text-decoration-none">Ver Actual</a></div>
-                <% } %>
-            </div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h5 class="fw-bold mb-0">API Dólar <span class="badge bg-primary ms-2" style="font-size:0.6rem; vertical-align: middle;">v1.0</span></h5>
+            <div class="text-muted small mt-1">Documentación y Depurador</div>
         </div>
-
-        <% if (error) { %>
-            <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-2"></i><%= error %></div>
-        <% } %>
-
-        <% if (precios && precios.bcv) { %>
-            <div class="row g-3 mb-4">
-                <div class="col-4">
-                    <div class="app-card rate-card text-center position-relative">
-                        <div class="rate-label mb-2">BCV</div>
-                        <div class="rate-value text-dark"><%= precios.bcv %></div>
-                        <div class="currency-symbol">Bs/USD</div>
-                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-success" style="width: 4px; height: 4px;"></div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="app-card rate-card text-center position-relative">
-                        <div class="rate-label mb-2">Binance</div>
-                        <div class="rate-value text-dark"><%= precios.binance %></div>
-                        <div class="currency-symbol">Bs/USDT</div>
-                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-warning" style="width: 4px; height: 4px;"></div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="app-card rate-card text-center position-relative">
-                        <div class="rate-label mb-2">Euro</div>
-                        <div class="rate-value text-dark"><%= precios.euro %></div>
-                        <div class="currency-symbol">Bs/EUR</div>
-                        <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 rounded-circle bg-primary" style="width: 4px; height: 4px;"></div>
-                    </div>
-                </div>
+        <div class="nav-list" id="nav-list">
+            <div class="nav-group-title">Tasas Generales</div>
+            <div class="nav-item active" data-id="actual">
+                <span class="method-badge method-get">GET</span> Tasa Actual
             </div>
-
-            <div class="app-card p-4 mb-4">
-                <h5 class="fw-bold mb-4 small text-uppercase text-muted">Calculadora</h5>
-                <form action="/api/dolar/ves" method="GET">
-                    <% if (fechaBusqueda) { %> <input type="hidden" name="fecha" value="<%= fechaBusqueda %>"> <% } %>
-                    <div class="row g-3">
-                        <div class="col-5">
-                            <select id="currency-selector" class="form-select form-select-lg fw-bold text-dark border-0 bg-light">
-                                <option value="Usd">🇺🇸 USD</option>
-                                <option value="Bs">🇻🇪 VES</option>
-                                <option value="Usdt">🪙 USDT</option>
-                                <option value="Eu">🇪🇺 EUR</option>
-                            </select>
-                        </div>
-                        <div class="col-7">
-                            <input type="number" step="0.01" id="amount-input" name="Usd" class="form-control form-control-lg fw-bold text-end" placeholder="0.00" required>
-                        </div>
-                        <div class="col-12 mt-4"><button type="submit" class="btn btn-action shadow-sm">Convertir Ahora</button></div>
-                    </div>
-                </form>
+            <div class="nav-item" data-id="proximo">
+                <span class="method-badge method-get">GET</span> Tasa Próxima (Futura)
             </div>
-
-            <% if (precios.conversion && Object.keys(precios.conversion).length > 0) { %>
-                <div class="result-display p-4 text-center shadow-lg animate__animated animate__fadeInUp">
-                    <p class="mb-1 opacity-75 small text-uppercase fw-bold">Resultado Estimado</p>
-                    <% if (precios.conversion.bcv_total_usd) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usd %></h1> <span class="fs-5 opacity-75">Bs Digitales</span> <% } %>
-                    <% if (precios.conversion.bcv_total_ves) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_ves %></h1> <span class="fs-5 opacity-75">USD</span> <% } %>
-                    <% if (precios.conversion.bcv_total_usdt) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_usdt %></h1> <span class="fs-5 opacity-75">Bs (Binance)</span> <% } %>
-                    <% if (precios.conversion.bcv_total_eur) { %> <h1 class="display-3 fw-bold mb-0"><%= precios.conversion.bcv_total_eur %></h1> <span class="fs-5 opacity-75">Bs (Euro)</span> <% } %>
-
-                    <div class="mt-4 pt-3 border-top border-white border-opacity-25">
-                         <a href="/api/dolar/ves<%= fechaBusqueda ? '?fecha='+fechaBusqueda : '' %>" class="text-white text-decoration-none small fw-bold">
-                             <i class="bi bi-arrow-repeat me-1"></i> Nueva consulta
-                         </a>
-                    </div>
-                </div>
-            <% } %>
-        <% } %>
-    </div>
-
-    <div class="modal fade" id="calendarModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content rounded-4 border-0 shadow">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-dark">Histórico</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body pt-2">
-                    <div class="d-flex justify-content-between align-items-center mb-3 px-2">
-                        <button class="btn btn-sm btn-light border rounded-circle shadow-sm" onclick="cambiarMes(-1)"><i class="bi bi-chevron-left"></i></button>
-                        <span id="calTitle" class="fw-bold text-capitalize small">...</span>
-                        <button class="btn btn-sm btn-light border rounded-circle shadow-sm" onclick="cambiarMes(1)"><i class="bi bi-chevron-right"></i></button>
-                    </div>
-                    
-                    <div class="calendar-grid">
-                        <div class="cal-day-name">Do</div><div class="cal-day-name">Lu</div><div class="cal-day-name">Ma</div>
-                        <div class="cal-day-name">Mi</div><div class="cal-day-name">Ju</div><div class="cal-day-name">Vi</div><div class="cal-day-name">Sa</div>
-                        <div id="calDaysContainer" style="display: contents;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // --- FUNCIONES DEL FRONTEND ---
-        
-        // 1. Selector de Monedas (Visual)
-        const selector = document.getElementById('currency-selector');
-        const input = document.getElementById('amount-input');
-        if(selector && input){
-            function updateInputName() { input.name = selector.value; input.placeholder = "0.00"; input.focus(); }
-            selector.addEventListener('change', updateInputName);
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('Bs')) selector.value = 'Bs';
-            else if (params.has('Usdt')) selector.value = 'Usdt';
-            else if (params.has('Eu')) selector.value = 'Eu';
-            else selector.value = 'Usd';
-            updateInputName();
-            if (params.has(selector.value)) input.value = params.get(selector.value);
-        }
-
-        // 2. Lógica del Calendario (LAZY LOADING)
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let calendarModal;
-
-        function abrirCalendario() {
-            if (!calendarModal) calendarModal = new bootstrap.Modal(document.getElementById('calendarModal'));
-            calendarModal.show();
-            // Llama a la API solo cuando se abre
-            cargarDatosCalendario(currentMonth, currentYear);
-        }
-
-        function cambiarMes(delta) {
-            currentMonth += delta;
-            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-            cargarDatosCalendario(currentMonth, currentYear);
-        }
-
-        async function cargarDatosCalendario(mes, anio) {
-            const container = document.getElementById('calDaysContainer');
-            const title = document.getElementById('calTitle');
             
-            // UI de carga
-            const dateObj = new Date(anio, mes, 1);
-            title.textContent = dateObj.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
-            container.innerHTML = '<div class="text-center w-100 py-4 text-muted small" style="grid-column: span 7"><div class="spinner-border spinner-border-sm mb-2" role="status"></div><br>Buscando datos...</div>';
+            <div class="nav-group-title">Histórico</div>
+            <div class="nav-item" data-id="historial">
+                <span class="method-badge method-get">GET</span> Gráfica de Historial
+            </div>
+            <div class="nav-item" data-id="fecha">
+                <span class="method-badge method-get">GET</span> Búsqueda por Fecha
+            </div>
+            <div class="nav-item" data-id="calendario">
+                <span class="method-badge method-get">GET</span> Días del Mes (Calendario)
+            </div>
+        </div>
+    </div>
 
-            try {
-                // FETCH AL ENDPOINT "MODO CALENDARIO"
-                const res = await fetch(`/api/dolar/ves?modo=calendario&mes=${mes}&anio=${anio}`);
-                const data = await res.json();
-                const diasDisponibles = data.dias || [];
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-container">
+            <h2 class="endpoint-title" id="ui-title">Tasa Actual</h2>
+            <p class="endpoint-desc" id="ui-desc">Retorna la tasa de cambio vigente del día actual.</p>
+            
+            <div class="url-bar">
+                <div class="url-text">
+                    <span id="ui-method">GET</span> /api/dolar/<span id="ui-path">ves</span>
+                </div>
+                <button class="btn-send" onclick="sendRequest()" id="btn-send">
+                    <i class="bi bi-play-fill"></i> Ejecutar
+                </button>
+            </div>
+            
+            <!-- Parámetros dinámicos -->
+            <div class="params-section" id="params-section">
+                <h6>Query Parameters</h6>
+                <div id="params-container" class="row g-3">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+            
+            <!-- Response -->
+            <div class="response-container">
+                <div class="response-header">
+                    <div class="text-white fw-bold">Response Body</div>
+                    <div class="status-wrapper">
+                        <div class="status-badge" id="res-status" style="display:none;"><div class="dot"></div> 200 OK</div>
+                        <div class="time-badge" id="res-time">-- ms</div>
+                    </div>
+                </div>
+                <pre><code id="json-debugger">Cargando...</code></pre>
+            </div>
+        </div>
+    </div>
 
-                // Renderizar Grid
-                const firstDay = new Date(anio, mes, 1).getDay(); // 0 = Domingo
-                const daysInMonth = new Date(anio, mes + 1, 0).getDate();
-                let html = '';
+    <!-- Data inicial inyectada desde el backend -->
+    <script>
+        const initialData = <%- JSON.stringify(precios || {}) %>;
+    </script>
 
-                // Espacios vacíos
-                for(let i=0; i<firstDay; i++) html += `<div></div>`;
+    <script>
+        // Configuración de endpoints
+        const endpoints = {
+            'actual': {
+                title: 'Tasa Actual',
+                desc: 'Retorna la tasa de cambio vigente del día actual (BCV, Binance, Euro, COP).',
+                path: 'ves',
+                params: []
+            },
+            'proximo': {
+                title: 'Tasa Próxima (Futura)',
+                desc: 'Retorna la tasa de cambio estipulada para el próximo día hábil (Ej. Lunes cuando es fin de semana).',
+                path: 'ves',
+                params: [
+                    { name: 'proximo', type: 'hidden', value: 'true' }
+                ]
+            },
+            'historial': {
+                title: 'Gráfica de Historial',
+                desc: 'Retorna un arreglo con las tasas de los últimos 30 días, ideal para graficar.',
+                path: 'historial',
+                params: []
+            },
+            'fecha': {
+                title: 'Búsqueda por Fecha',
+                desc: 'Busca la tasa de cambio exacta de un día específico en el pasado.',
+                path: 'ves',
+                params: [
+                    { name: 'fecha', type: 'date', label: 'Fecha (YYYY-MM-DD)' }
+                ]
+            },
+            'calendario': {
+                title: 'Días del Mes (Calendario)',
+                desc: 'Retorna un listado de los días numéricos que contienen registros en la base de datos para un mes y año específico.',
+                path: 'ves',
+                params: [
+                    { name: 'modo', type: 'hidden', value: 'calendario' },
+                    { name: 'mes', type: 'number', label: 'Mes (0-11)', min: 0, max: 11, default: new Date().getMonth() },
+                    { name: 'anio', type: 'number', label: 'Año (YYYY)', default: new Date().getFullYear() }
+                ]
+            }
+        };
 
-                // Días
-                for(let d=1; d<=daysInMonth; d++) {
-                    const tieneData = diasDisponibles.includes(d);
-                    // Formato YYYY-MM-DD para el link
-                    const mesFmt = String(mes + 1).padStart(2, '0');
-                    const diaFmt = String(d).padStart(2, '0');
-                    const fechaFull = `${anio}-${mesFmt}-${diaFmt}`;
+        let currentId = 'actual';
 
-                    if(tieneData) {
-                        html += `
-                            <a href="/api/dolar/ves?fecha=${fechaFull}" class="cal-day active text-decoration-none" title="Ver tasa del día ${d}">
-                                ${d}
-                                <div class="cal-dot"></div>
-                            </a>
-                        `;
+        // Sintaxis Highlighter para JSON
+        function syntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                        // Remove comillas a las keys para que se vea más limpio
+                        match = match.replace(/"/g, ''); 
                     } else {
-                        html += `<div class="cal-day">${d}</div>`;
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function renderJson(data, ms = null) {
+            const code = document.getElementById('json-debugger');
+            code.innerHTML = syntaxHighlight(data);
+            
+            document.getElementById('res-status').style.display = 'flex';
+            if(ms !== null) {
+                document.getElementById('res-time').innerText = ms + ' ms';
+            }
+        }
+
+        // Carga Inicial
+        renderJson(initialData, 12);
+
+        // UI Logic
+        const navItems = document.querySelectorAll('.nav-item');
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // Update active state
+                document.querySelector('.nav-item.active').classList.remove('active');
+                item.classList.add('active');
+                
+                const id = item.getAttribute('data-id');
+                currentId = id;
+                loadEndpointUi(id);
+            });
+        });
+
+        function loadEndpointUi(id) {
+            const conf = endpoints[id];
+            
+            document.getElementById('ui-title').innerText = conf.title;
+            document.getElementById('ui-desc').innerText = conf.desc;
+            
+            updateUrlPreview();
+            
+            const paramsContainer = document.getElementById('params-container');
+            const paramsSection = document.getElementById('params-section');
+            paramsContainer.innerHTML = '';
+            
+            if (conf.params.length > 0) {
+                let hasVisibleParams = false;
+                conf.params.forEach(p => {
+                    if (p.type === 'hidden') return;
+                    hasVisibleParams = true;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'col-md-4';
+                    
+                    let inputHtml = '';
+                    if (p.type === 'date') {
+                        // Fecha actual por defecto
+                        const today = new Date().toISOString().split('T')[0];
+                        inputHtml = `<input type="date" class="form-control dyn-param" id="param-${p.name}" data-name="${p.name}" value="${today}" onchange="updateUrlPreview()">`;
+                    } else if (p.type === 'number') {
+                        inputHtml = `<input type="number" class="form-control dyn-param" id="param-${p.name}" data-name="${p.name}" value="${p.default}" min="${p.min||''}" max="${p.max||''}" onchange="updateUrlPreview()">`;
+                    }
+                    
+                    div.innerHTML = `
+                        <label class="form-label text-muted small fw-bold mb-1">${p.label}</label>
+                        ${inputHtml}
+                    `;
+                    paramsContainer.appendChild(div);
+                });
+                
+                paramsSection.style.display = hasVisibleParams ? 'block' : 'none';
+            } else {
+                paramsSection.style.display = 'none';
+            }
+            
+            // Auto ejecutar si no requiere inputs del usuario
+            const visibleParams = conf.params.filter(p => p.type !== 'hidden');
+            if (visibleParams.length === 0) {
+                sendRequest();
+            } else {
+                document.getElementById('json-debugger').innerHTML = '<span class="text-muted">/* Presiona "Ejecutar" para ver la respuesta con estos parámetros */</span>';
+                document.getElementById('res-status').style.display = 'none';
+                document.getElementById('res-time').innerText = '-- ms';
+            }
+        }
+
+        function getBuiltUrl() {
+            const conf = endpoints[currentId];
+            let url = `/api/dolar/${conf.path}`;
+            const queryParts = [];
+            
+            conf.params.forEach(p => {
+                if (p.type === 'hidden') {
+                    queryParts.push(`${p.name}=${p.value}`);
+                } else {
+                    const el = document.getElementById(`param-${p.name}`);
+                    if (el && el.value) {
+                        queryParts.push(`${p.name}=${el.value}`);
                     }
                 }
-                container.innerHTML = html;
+            });
+            
+            if (queryParts.length > 0) {
+                url += '?' + queryParts.join('&');
+            }
+            
+            return url;
+        }
 
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = '<small class="text-danger text-center w-100" style="grid-column: span 7">Error de conexión</small>';
+        function updateUrlPreview() {
+            const conf = endpoints[currentId];
+            let url = `ves`; // base
+            if(conf.path === 'historial') url = 'historial';
+            
+            const queryParts = [];
+            conf.params.forEach(p => {
+                if (p.type === 'hidden') {
+                    queryParts.push(`${p.name}=<span class="text-primary">${p.value}</span>`);
+                } else {
+                    const el = document.getElementById(`param-${p.name}`);
+                    if (el && el.value) {
+                        queryParts.push(`${p.name}=<span class="text-primary">${el.value}</span>`);
+                    }
+                }
+            });
+            
+            let finalHtml = url;
+            if (queryParts.length > 0) {
+                finalHtml += '?' + queryParts.join('&amp;');
+            }
+            document.getElementById('ui-path').innerHTML = finalHtml;
+        }
+
+        async function sendRequest() {
+            const url = getBuiltUrl();
+            const btn = document.getElementById('btn-send');
+            const code = document.getElementById('json-debugger');
+            
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            btn.disabled = true;
+            code.innerHTML = '<span class="text-muted">Cargando...</span>';
+            
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+                
+                renderJson(data, duration);
+                
+                if (!response.ok) {
+                    document.getElementById('res-status').innerHTML = `<div class="dot" style="background:#ef4444"></div> ${response.status} Error`;
+                    document.getElementById('res-status').style.color = '#ef4444';
+                } else {
+                    document.getElementById('res-status').innerHTML = `<div class="dot"></div> ${response.status} OK`;
+                    document.getElementById('res-status').style.color = '#10b981';
+                }
+                
+            } catch (error) {
+                renderJson({ error: error.message });
+                document.getElementById('res-status').innerHTML = `<div class="dot" style="background:#ef4444"></div> Failed`;
+                document.getElementById('res-status').style.color = '#ef4444';
+            } finally {
+                btn.innerHTML = '<i class="bi bi-play-fill"></i> Ejecutar';
+                btn.disabled = false;
             }
         }
     </script>

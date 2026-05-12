@@ -4,8 +4,27 @@ import https from 'https';
 
 const URL_BCV = 'https://www.bcv.org.ve/'; 
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
+const URL_TRM = process.env.TRM_API_URL || 'https://trm-colombia.vercel.app/?date=today';
 
 const agent = new https.Agent({ rejectUnauthorized: false });
+
+let cachedTrm = null;
+
+async function obtenerTRM() {
+    try {
+        const response = await fetch(URL_TRM, { timeout: 10000 });
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.valor) {
+                cachedTrm = parseFloat(data.valor);
+                return cachedTrm;
+            }
+        }
+    } catch (error) {
+        // Silencioso, si falla retorna el caché
+    }
+    return cachedTrm;
+}
 
 async function obtenerPromedioBinance(tradeType = "BUY") {
     try {
@@ -51,6 +70,8 @@ async function obtenerPrecioDolar() {
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         const precioBinanceVenta = await obtenerPromedioBinance("SELL");
+        
+        const trm = await obtenerTRM();
 
         // --- LÓGICA BCV ---
         const dataBCV = await respuestaBCV.text();
@@ -78,6 +99,7 @@ async function obtenerPrecioDolar() {
             euro: null,
             binance: null,
             binance_venta: null, 
+            cop: null,
             fechaValor: fechaValorFinal
         };
 
@@ -94,6 +116,7 @@ async function obtenerPrecioDolar() {
                 // Si por alguna razón extrema Binance vuelve a fallar, usa el de compra de respaldo
                 resultado.binance_venta = precioBinanceVenta ? precioBinanceVenta.toFixed(2) : precioBinanceCompra.toFixed(2);
                 resultado.euro = precioLimpioEu.toFixed(2);
+                if (trm) resultado.cop = trm.toFixed(2);
             }
         }
         return resultado;
