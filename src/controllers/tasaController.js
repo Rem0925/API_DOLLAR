@@ -1,4 +1,5 @@
 import Tasa from "../models/Tasa.js";
+import ConfigMoneda from "../models/ConfigMoneda.js";
 import obtenerPrecioDolar from "../utils/scraper.js";
 
 const obtenerUltimoCheckpoint = () => {
@@ -286,5 +287,15 @@ export const getHistorialGrafica = async (req, res) => {
   } catch (error) {
     console.error("Error en API Historial:", error);
     res.status(500).json({ error: "Error obteniendo historial" });
+  }
+};
+
+export const getConfigMonedas = async (req, res) => {
+  try {
+    const config = await ConfigMoneda.find({}, { _id: 0, __v: 0 }); // Excluye _id y __v para un JSON más limpio
+    res.json(config);
+  } catch (error) {
+    console.error("Error obteniendo configuración:", error);
+    res.status(500).json({ error: "Error obteniendo configuración de monedas" });
   }
 };

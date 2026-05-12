@@ -2,9 +2,9 @@ import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import https from 'https';
 
-const URL_BCV = 'https://www.bcv.org.ve/'; 
+const URL_BCV = 'https://www.bcv.org.ve/';
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
-const URL_TRM = process.env.TRM_API_URL || 'https://trm-colombia.vercel.app/?date=today';
+const URL_TRM = process.env.TRM_API_URL;
 
 const agent = new https.Agent({ rejectUnauthorized: false });
 
