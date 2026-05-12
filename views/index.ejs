@@ -216,7 +216,7 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h5 class="fw-bold mb-0">API Dólar <span class="badge bg-primary ms-2" style="font-size:0.6rem; vertical-align: middle;">v1.0</span></h5>
+            <h5 class="fw-bold mb-0">API Dólar</h5>
             <div class="text-muted small mt-1">Documentación y Depurador</div>
         </div>
         <div class="nav-list" id="nav-list">
@@ -237,6 +237,11 @@
             </div>
             <div class="nav-item" data-id="calendario">
                 <span class="method-badge method-get">GET</span> Días del Mes (Calendario)
+            </div>
+
+            <div class="nav-group-title">Configuración</div>
+            <div class="nav-item" data-id="configuracion">
+                <span class="method-badge method-get">GET</span> Configuración de Monedas
             </div>
         </div>
     </div>
@@ -323,6 +328,12 @@
                     { name: 'mes', type: 'number', label: 'Mes (0-11)', min: 0, max: 11, default: new Date().getMonth() },
                     { name: 'anio', type: 'number', label: 'Año (YYYY)', default: new Date().getFullYear() }
                 ]
+            },
+            'configuracion': {
+                title: 'Configuración de Monedas',
+                desc: 'Retorna el arreglo dinámico con todas las propiedades visuales de las monedas (Iconos, Colores, Símbolos) para que la app frontend las renderice de forma automática.',
+                path: 'config',
+                params: []
             }
         };
 
