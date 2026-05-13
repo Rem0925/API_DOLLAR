@@ -9,7 +9,8 @@ const configMonedaSchema = new mongoose.Schema({
   symbol: { type: String, required: true },
   color: { type: String, required: true },
   iconName: { type: String, required: true },
-  iconWeight: { type: String, required: true }
+  iconWeight: { type: String, required: true },
+  isBasedOnBcv: { type: Boolean, default: false }
 });
 
 const ConfigMoneda = mongoose.model("ConfigMoneda", configMonedaSchema);
