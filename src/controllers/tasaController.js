@@ -148,6 +148,9 @@ export const getTasas = async (req, res) => {
             binance_venta: parseFloat(liveData.binance_venta || liveData.binance), 
             euro: parseFloat(liveData.euro),
             cop: parseFloat(liveData.cop) || null,
+            clp: parseFloat(liveData.clp) || null,
+            brl: parseFloat(liveData.brl) || null,
+            mxn: parseFloat(liveData.mxn) || null,
             fechaActualizacion: new Date(),
             fechaValor: liveData.fechaValor,
           };
@@ -219,6 +222,9 @@ export const getTasas = async (req, res) => {
         binance_venta: tasaData.binance_venta ? tasaData.binance_venta.toFixed(2) : tasaData.binance.toFixed(2),
         euro: tasaData.euro.toFixed(2),
         cop: tasaData.cop ? tasaData.cop.toFixed(2) : null,
+        clp: tasaData.clp ? tasaData.clp.toFixed(2) : null,
+        brl: tasaData.brl ? tasaData.brl.toFixed(4) : null,
+        mxn: tasaData.mxn ? tasaData.mxn.toFixed(2) : null,
         tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== "true",
         esTasaProxima: proximo === "true",
         conversion: {}
@@ -261,6 +267,9 @@ export const getHistorialGrafica = async (req, res) => {
           binance_venta: { $first: "$binance_venta" },
           euro: { $first: "$euro" },
           cop: { $first: "$cop" },
+          clp: { $first: "$clp" },
+          brl: { $first: "$brl" },
+          mxn: { $first: "$mxn" },
           fechaReferencia: { $first: "$fechaValor" },
         },
       },
@@ -281,6 +290,9 @@ export const getHistorialGrafica = async (req, res) => {
       binance_venta: t.binance_venta || t.binance, 
       euro: t.euro,
       cop: t.cop,
+      clp: t.clp,
+      brl: t.brl,
+      mxn: t.mxn,
     }));
 
     res.json(dataGrafica);

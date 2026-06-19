@@ -5,25 +5,30 @@ import https from 'https';
 const URL_BCV = 'https://www.bcv.org.ve/';
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
 const URL_TRM = process.env.TRM_API_URL;
+const URL_CLP = process.env.CLP_API_URL;
+const URL_BRL = process.env.BRL_API_URL;
+const URL_MXN = process.env.MXN_API_URL;
 
 const agent = new https.Agent({ rejectUnauthorized: false });
 
-let cachedTrm = null;
+let cacheDolarApi = {};
 
-async function obtenerTRM() {
+async function obtenerDesdeDolarApi(url) {
     try {
-        const response = await fetch(URL_TRM, { timeout: 10000 });
+        const response = await fetch(url, { timeout: 10000 });
         if (response.ok) {
             const data = await response.json();
-            if (data && data.valor) {
-                cachedTrm = parseFloat(data.valor);
-                return cachedTrm;
+            // mx/cl usan "venta", br usa "venda", co usa "valor"
+            const valor = data.venta || data.venda || data.valor;
+            if (valor) {
+                cacheDolarApi[url] = parseFloat(valor);
+                return cacheDolarApi[url];
             }
         }
     } catch (error) {
         // Silencioso, si falla retorna el caché
     }
-    return cachedTrm;
+    return cacheDolarApi[url] || null;
 }
 
 async function obtenerPromedioBinance(tradeType = "BUY") {
@@ -71,7 +76,10 @@ async function obtenerPrecioDolar() {
         
         const precioBinanceVenta = await obtenerPromedioBinance("SELL");
         
-        const trm = await obtenerTRM();
+        const trm = await obtenerDesdeDolarApi(URL_TRM);
+        const clp = await obtenerDesdeDolarApi(URL_CLP);
+        const brl = await obtenerDesdeDolarApi(URL_BRL);
+        const mxn = await obtenerDesdeDolarApi(URL_MXN);
 
         // --- LÓGICA BCV ---
         const dataBCV = await respuestaBCV.text();
@@ -100,6 +108,9 @@ async function obtenerPrecioDolar() {
             binance: null,
             binance_venta: null, 
             cop: null,
+            clp: null,
+            brl: null,
+            mxn: null,
             fechaValor: fechaValorFinal
         };
 
@@ -117,6 +128,9 @@ async function obtenerPrecioDolar() {
                 resultado.binance_venta = precioBinanceVenta ? precioBinanceVenta.toFixed(2) : precioBinanceCompra.toFixed(2);
                 resultado.euro = precioLimpioEu.toFixed(2);
                 if (trm) resultado.cop = trm.toFixed(2);
+                if (clp) resultado.clp = clp.toFixed(2);
+                if (brl) resultado.brl = brl.toFixed(4); // usualmente BRL requiere más decimales, usamos 4
+                if (mxn) resultado.mxn = mxn.toFixed(2);
             }
         }
         return resultado;
