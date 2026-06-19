@@ -18,7 +18,10 @@ export const iniciarCronJobs = () => {
                 binance: parseFloat(datos.binance),
                 binance_venta: parseFloat(datos.binance_venta || datos.binance), 
                 euro: parseFloat(datos.euro),
-                cop: parseFloat(datos.cop) || null
+                cop: parseFloat(datos.cop) || null,
+                clp: parseFloat(datos.clp) || null,
+                brl: parseFloat(datos.brl) || null,
+                mxn: parseFloat(datos.mxn) || null
             };
 
             // Solo guarda si cambiaron los valores
@@ -26,7 +29,10 @@ export const iniciarCronJobs = () => {
                 ultimaTasa.bcv !== nuevasTasas.bcv ||
                 ultimaTasa.binance !== nuevasTasas.binance ||
                 ultimaTasa.binance_venta !== nuevasTasas.binance_venta ||
-                ultimaTasa.cop !== nuevasTasas.cop) {
+                ultimaTasa.cop !== nuevasTasas.cop ||
+                ultimaTasa.clp !== nuevasTasas.clp ||
+                ultimaTasa.brl !== nuevasTasas.brl ||
+                ultimaTasa.mxn !== nuevasTasas.mxn) {
 
                 const ahora = new Date();
                 const nuevoDoc = {
