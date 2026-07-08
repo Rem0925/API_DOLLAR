@@ -32,9 +32,9 @@ app.get('/api/dolar/ves', getTasas);
 app.get('/api/dolar/historial', getHistorialGrafica);
 app.get('/api/dolar/config', getConfigMonedas);
 
-// Rutas VIP
-app.post('/vip/activate', activateVip);
-app.get('/vip/link/:token', linkVip);
+// Rutas VIPs
+app.post('/api/dolar/vip/activate', activateVip);
+app.get('/api/dolar/vip/link/:token', linkVip);
 
 app.get('/', (req, res) => {
     res.redirect('/api/dolar/ves');
