@@ -1,5 +1,6 @@
 import Tasa from "../models/Tasa.js";
 import ConfigMoneda from "../models/ConfigMoneda.js";
+import PremiumCode from "../models/PremiumCode.js";
 import obtenerPrecioDolar from "../utils/scraper.js";
 
 const obtenerUltimoCheckpoint = () => {
@@ -311,3 +312,103 @@ export const getConfigMonedas = async (req, res) => {
     res.status(500).json({ error: "Error obteniendo configuración de monedas" });
   }
 };
+
+export const activateVip = async (req, res) => {
+  try {
+    const { token, deviceId } = req.body;
+
+    if (!token || !deviceId) {
+      return res.status(400).json({ error: "Faltan datos requeridos (token, deviceId)" });
+    }
+
+    const premium = await PremiumCode.findOne({ code: token });
+
+    if (!premium || !premium.isActive) {
+      return res.status(400).json({ error: "Código premium inválido o inactivo" });
+    }
+
+    if (premium.linkedDeviceId === null) {
+      premium.linkedDeviceId = deviceId;
+      await premium.save();
+      return res.status(200).json({ message: "Dispositivo vinculado exitosamente" });
+    }
+
+    if (premium.linkedDeviceId === deviceId) {
+      return res.status(200).json({ message: "Dispositivo ya estaba vinculado" });
+    }
+
+    // Si el linkedDeviceId no coincide, se sobrescribe para permitir cambio de equipo
+    premium.linkedDeviceId = deviceId;
+    await premium.save();
+    return res.status(200).json({ message: "Nuevo dispositivo vinculado exitosamente" });
+
+  } catch (error) {
+    console.error("Error en activateVip:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+export const linkVip = (req, res) => {
+  const { token } = req.params;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activando VeGreen Premium...</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #E5E7EB;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        h2 { margin-bottom: 20px; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(229, 231, 235, 0.2);
+            border-left-color: #10B981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #openBtn {
+            background-color: #10B981;
+            color: #121212;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="spinner"></div>
+    <h2>Activando VeGreen Premium...</h2>
+    <a href="vegreen://vip?token=${token}" id="openBtn" style="display: none;">Abrir en la App</a>
+
+    <script>
+        window.location.replace("vegreen://vip?token=${token}");
+        setTimeout(() => {
+            document.getElementById('openBtn').style.display = 'block';
+        }, 1500);
+    </script>
+</body>
+</html>
+  `;
+  res.send(html);
+};
