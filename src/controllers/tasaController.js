@@ -337,10 +337,8 @@ export const activateVip = async (req, res) => {
       return res.status(200).json({ message: "Dispositivo ya estaba vinculado" });
     }
 
-    // Si el linkedDeviceId no coincide, se sobrescribe para permitir cambio de equipo
-    premium.linkedDeviceId = deviceId;
-    await premium.save();
-    return res.status(200).json({ message: "Nuevo dispositivo vinculado exitosamente" });
+    // Si el linkedDeviceId no coincide, rechazamos la petición
+    return res.status(403).json({ error: "El código ya está vinculado a otro dispositivo" });
 
   } catch (error) {
     console.error("Error en activateVip:", error);
