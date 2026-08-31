@@ -82,7 +82,8 @@ export const getTasas = async (req, res) => {
     let tasaData;
 
     if (fecha) {
-      // Búsqueda histórica: Prioriza registros guardados en ese día, con fallback a fechaValor
+      // Búsqueda histórica:
+      // 1. Prioriza fechaValor estricto (tasa oficial que estuvo vigente en esa fecha, coincidiendo exactamente con /historial)
       const partes = fecha.split("-");
       const year = parseInt(partes[0]);
       const month = parseInt(partes[1]) - 1;
@@ -91,12 +92,20 @@ export const getTasas = async (req, res) => {
       const finDia = new Date(Date.UTC(year, month, day + 1, 4, 0, 0, 0));
 
       tasaData = await Tasa.findOne({
-        fechaActualizacion: { $gte: inicioDia, $lt: finDia },
+        fechaValor: { $gte: inicioDia, $lt: finDia },
       }).sort({ fechaActualizacion: -1 });
 
+      // 2. Si no hay fechaValor (fines de semana / feriados), busca la última actualización guardada en ese día
       if (!tasaData) {
         tasaData = await Tasa.findOne({
-          fechaValor: { $gte: inicioDia, $lt: finDia },
+          fechaActualizacion: { $gte: inicioDia, $lt: finDia },
+        }).sort({ fechaActualizacion: -1 });
+      }
+
+      // 3. Fallback de seguridad al registro más reciente antes de esa fecha
+      if (!tasaData) {
+        tasaData = await Tasa.findOne({
+          fechaValor: { $lt: finDia },
         }).sort({ fechaValor: -1, fechaActualizacion: -1 });
       }
     } else {
