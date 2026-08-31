@@ -236,7 +236,7 @@ export const getTasas = async (req, res) => {
         clp: tasaData.clp ? tasaData.clp.toFixed(2) : null,
         brl: tasaData.brl ? tasaData.brl.toFixed(4) : null,
         mxn: tasaData.mxn ? tasaData.mxn.toFixed(2) : null,
-        tieneProximo: !!tasaFutura && proximo !== "true",
+        tieneProximo: !fecha && !!tasaFutura && proximo !== "true",
         esTasaProxima: proximo === "true",
         conversion: {}
     } : {};
