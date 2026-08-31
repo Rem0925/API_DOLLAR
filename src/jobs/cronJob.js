@@ -27,6 +27,7 @@ export const iniciarCronJobs = () => {
             // Solo guarda si cambiaron los valores
             if (!ultimaTasa ||
                 ultimaTasa.bcv !== nuevasTasas.bcv ||
+                ultimaTasa.euro !== nuevasTasas.euro ||
                 ultimaTasa.binance !== nuevasTasas.binance ||
                 ultimaTasa.binance_venta !== nuevasTasas.binance_venta ||
                 ultimaTasa.cop !== nuevasTasas.cop ||
