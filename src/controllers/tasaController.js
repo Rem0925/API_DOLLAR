@@ -82,7 +82,7 @@ export const getTasas = async (req, res) => {
     let tasaData;
 
     if (fecha) {
-      // Búsqueda histórica: Prioriza fechaValor, cae en fechaActualizacion
+      // Búsqueda histórica: Prioriza registros guardados en ese día, con fallback a fechaValor
       const partes = fecha.split("-");
       const year = parseInt(partes[0]);
       const month = parseInt(partes[1]) - 1;
@@ -91,11 +91,14 @@ export const getTasas = async (req, res) => {
       const finDia = new Date(Date.UTC(year, month, day + 1, 4, 0, 0, 0));
 
       tasaData = await Tasa.findOne({
-        $or: [
-          { fechaValor: { $gte: inicioDia, $lte: finDia } },
-          { fechaActualizacion: { $gte: inicioDia, $lte: finDia } },
-        ],
-      }).sort({ fechaValor: -1, fechaActualizacion: -1 });
+        fechaActualizacion: { $gte: inicioDia, $lt: finDia },
+      }).sort({ fechaActualizacion: -1 });
+
+      if (!tasaData) {
+        tasaData = await Tasa.findOne({
+          fechaValor: { $gte: inicioDia, $lt: finDia },
+        }).sort({ fechaValor: -1, fechaActualizacion: -1 });
+      }
     } else {
       const ultimoRegistro = await Tasa.findOne().sort({
         fechaActualizacion: -1,
@@ -104,19 +107,17 @@ export const getTasas = async (req, res) => {
       if (proximo === "true") {
         tasaData = ultimoRegistro;
       } else {
-        // MODO NORMAL (Viernes/Fin de semana)
+        // Si el registro más nuevo es para una fecha futura (mañana o próximo día hábil)
         if (
           ultimoRegistro &&
-          ultimoRegistro.fechaValor > finHoy &&
-          esFinDeSemana
+          ultimoRegistro.fechaValor > finHoy
         ) {
           const registroVigente = await Tasa.findOne({
             fechaValor: { $lte: finHoy },
           }).sort({ fechaValor: -1, fechaActualizacion: -1 });
 
           if (registroVigente) {
-            // C. COMBINACIÓN MÁGICA:
-            // Usamos Binance del registro más nuevo, pero BCV/Euro del registro del viernes.
+            // COMBINACIÓN: Usamos Binance del registro más nuevo, pero BCV/Euro del registro vigente hoy.
             tasaData = {
               ...ultimoRegistro.toObject(),
               bcv: registroVigente.bcv,
@@ -226,7 +227,7 @@ export const getTasas = async (req, res) => {
         clp: tasaData.clp ? tasaData.clp.toFixed(2) : null,
         brl: tasaData.brl ? tasaData.brl.toFixed(4) : null,
         mxn: tasaData.mxn ? tasaData.mxn.toFixed(2) : null,
-        tieneProximo: esFinDeSemana && !!tasaFutura && proximo !== "true",
+        tieneProximo: !!tasaFutura && proximo !== "true",
         esTasaProxima: proximo === "true",
         conversion: {}
     } : {};

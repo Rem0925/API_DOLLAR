@@ -470,8 +470,7 @@
 
         function updateUrlPreview() {
             const conf = endpoints[currentId];
-            let url = `ves`; // base
-            if(conf.path === 'historial') url = 'historial';
+            let url = conf.path;
             
             const queryParts = [];
             conf.params.forEach(p => {
