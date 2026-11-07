@@ -31,6 +31,13 @@ async function obtenerDesdeDolarApi(url) {
     return cacheDolarApi[url] || null;
 }
 
+// Normaliza el formato numérico es-VE del BCV: punto = miles, coma = decimales
+// Ej: "1.001,18602288" -> 1001.18602288 | "897,53830000" -> 897.5383
+function parsearNumeroBCV(texto) {
+    const limpio = texto.trim().replace(/\./g, '').replace(',', '.');
+    return parseFloat(limpio);
+}
+
 async function obtenerPromedioBinance(tradeType = "BUY") {
     try {
         const headers = {
@@ -117,9 +124,8 @@ async function obtenerPrecioDolar() {
         if (elementoPrecio.length > 0 && elementoPrecioEu.length > 0) {
             let precioStr = elementoPrecio.text().trim();
             let percioEu = elementoPrecioEu.text().trim();
-            let precioLimpioEu = parseFloat(percioEu.replace(',', '.').trim());
-            let precioLimpio = precioStr.replace(',', '.').trim();
-            const precioBCV = parseFloat(precioLimpio);
+            let precioLimpioEu = parsearNumeroBCV(percioEu);
+            const precioBCV = parsearNumeroBCV(precioStr);
             
             if (!isNaN(precioBCV) && precioBinanceCompra !== null){
                 resultado.bcv = precioBCV.toFixed(2);
