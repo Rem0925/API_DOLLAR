@@ -2,6 +2,7 @@ import Tasa from "../models/Tasa.js";
 import ConfigMoneda from "../models/ConfigMoneda.js";
 import PremiumCode from "../models/PremiumCode.js";
 import obtenerPrecioDolar from "../utils/scraper.js";
+import { evaluarYEnviarNotificaciones } from "../services/notificationService.js";
 
 const obtenerUltimoCheckpoint = () => {
   const ahora = new Date().toLocaleString("en-US", {
@@ -167,6 +168,9 @@ export const getTasas = async (req, res) => {
           };
           try {
             const creado = await Tasa.create(nuevoDoc);
+            evaluarYEnviarNotificaciones(creado, ultimoRegistro).catch((err) =>
+              console.error("Error notificaciones:", err.message),
+            );
             // Aplicar fusión inmediata si el nuevo registro es futuro
             if (creado.fechaValor > finHoy && proximo !== "true") {
               const vig = await Tasa.findOne({

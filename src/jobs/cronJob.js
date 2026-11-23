@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import Tasa from '../models/Tasa.js';
+import Notificacion from '../models/Notificacion.js';
 import obtenerPrecioDolar from '../utils/scraper.js';
+import { evaluarYEnviarNotificaciones } from '../services/notificationService.js';
 
 export const iniciarCronJobs = () => {
 
@@ -42,8 +44,9 @@ export const iniciarCronJobs = () => {
                     fechaValor: datos.fechaValor
                 };
 
-                await Tasa.create(nuevoDoc);
-                console.log(` Precios actualizados en Cron. ID: ${nuevoDoc._id}`);
+                const creado = await Tasa.create(nuevoDoc);
+                console.log(` Precios actualizados en Cron. ID: ${creado._id}`);
+                await evaluarYEnviarNotificaciones(creado, ultimaTasa);
             } else {
                 console.log('Precios sin cambios');
             }
@@ -60,6 +63,10 @@ export const iniciarCronJobs = () => {
         const fechaLimite = new Date();
         fechaLimite.setFullYear(fechaLimite.getFullYear() - 1);
         await Tasa.deleteMany({ fechaActualizacion: { $lt: fechaLimite } });
+
+        const fechaLimiteNotif = new Date();
+        fechaLimiteNotif.setDate(fechaLimiteNotif.getDate() - 90);
+        await Notificacion.deleteMany({ fechaCreacion: { $lt: fechaLimiteNotif } });
     }, {
         timezone: "America/Caracas"
     });

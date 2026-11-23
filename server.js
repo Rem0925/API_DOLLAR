@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import connectDB from './src/config/db.js';
 import { iniciarCronJobs } from './src/jobs/cronJob.js';
 import { getTasas, getHistorialGrafica, getConfigMonedas, activateVip, linkVip } from './src/controllers/tasaController.js';
+import { registrarPushToken, actualizarMutePush, getNotificaciones } from './src/controllers/notificacionController.js';
 
 dotenv.config();
 
@@ -31,6 +32,11 @@ app.use(express.json());
 app.get('/api/dolar/ves', getTasas);
 app.get('/api/dolar/historial', getHistorialGrafica);
 app.get('/api/dolar/config', getConfigMonedas);
+
+// Rutas Notificaciones y Push
+app.get('/api/dolar/notificaciones', getNotificaciones);
+app.post('/api/dolar/push/register', registrarPushToken);
+app.patch('/api/dolar/push/mute', actualizarMutePush);
 
 // Rutas VIPs
 app.post('/api/dolar/vip/activate', activateVip);
