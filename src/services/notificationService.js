@@ -6,8 +6,11 @@ import Notificacion from "../models/Notificacion.js";
 import NotificacionEstado from "../models/NotificacionEstado.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const EXPO_TOKEN_REGEX = /^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/;
+const EXPO_TOKEN_REGEX =
+  /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]{10,120}\]$/;
 const CARACAS_TZ = "America/Caracas";
+
+let evalMutex = Promise.resolve();
 
 export const formatNumeroVE = (val) => {
   const num = typeof val === "string" ? parseFloat(val) : val;
@@ -43,12 +46,15 @@ export const getUnidadMoneda = (monedaConfig = {}) => {
   ) {
     return "Bs";
   }
-  const sym = typeof monedaConfig.symbol === "string" ? monedaConfig.symbol.trim() : "";
+  const sym =
+    typeof monedaConfig.symbol === "string" ? monedaConfig.symbol.trim() : "";
   if (/^[A-Z]{2,5}$/.test(sym)) {
     return sym;
   }
   const shortTitle =
-    typeof monedaConfig.shortTitle === "string" ? monedaConfig.shortTitle.trim() : "";
+    typeof monedaConfig.shortTitle === "string"
+      ? monedaConfig.shortTitle.trim()
+      : "";
   return shortTitle || sym;
 };
 
@@ -150,72 +156,83 @@ export const construirNotificacionAlza = (alzas = []) => {
 export const enviarPushMasivo = async ({ titulo, cuerpo, datos = {} }) => {
   try {
     const tokensDocs = await PushToken.find({ muted: false })
-      .select("token")
+      .select("token appVariant -_id")
       .lean();
-    const validTokens = tokensDocs
-      .map((d) => d.token)
-      .filter((t) => typeof t === "string" && EXPO_TOKEN_REGEX.test(t));
 
-    if (validTokens.length === 0) return;
+    const groups = new Map();
+    for (const doc of tokensDocs) {
+      const t = doc?.token;
+      if (typeof t !== "string" || t.length > 160 || !EXPO_TOKEN_REGEX.test(t)) {
+        continue;
+      }
+      const variant =
+        doc?.appVariant === "development" ? "development" : "production";
+      if (!groups.has(variant)) {
+        groups.set(variant, []);
+      }
+      groups.get(variant).push(t);
+    }
 
-    const invalidTokens = [];
+    if (groups.size === 0) return;
+
+    const uniqueTag =
+      datos?.tag ||
+      `${datos?.tipo || "vegreen"}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const messageData = { ...(datos || {}), tag: uniqueTag };
+
+    const invalidTokens = new Set();
     const chunkSize = 100;
 
-    for (let i = 0; i < validTokens.length; i += chunkSize) {
-      const chunk = validTokens.slice(i, i + chunkSize);
-      const uniqueTag =
-        datos?.tag ||
-        `${datos?.tipo || "vegreen"}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      const messageData = { ...(datos || {}), tag: uniqueTag };
-      const messages = chunk.map((token) => ({
-        to: token,
-        title: titulo,
-        body: cuerpo,
-        data: messageData,
-        sound: "default",
-        priority: "high",
-        channelId: "default",
-      }));
+    for (const [, variantTokens] of groups.entries()) {
+      for (let i = 0; i < variantTokens.length; i += chunkSize) {
+        const chunk = variantTokens.slice(i, i + chunkSize);
+        const messages = chunk.map((token) => ({
+          to: token,
+          title: titulo,
+          body: cuerpo,
+          data: messageData,
+          sound: "default",
+          priority: "high",
+          channelId: "default",
+        }));
 
-      try {
-        const resp = await axios.post(EXPO_PUSH_URL, messages, {
-          headers: {
-            Accept: "application/json",
-            "Accept-encoding": "gzip, deflate",
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
-        });
-
-        const tickets = resp.data?.data;
-        if (Array.isArray(tickets)) {
-          tickets.forEach((ticket, idx) => {
-            if (
-              ticket?.status === "error" &&
-              ticket?.details?.error === "DeviceNotRegistered" &&
-              chunk[idx]
-            ) {
-              invalidTokens.push(chunk[idx]);
-            }
+        try {
+          const resp = await axios.post(EXPO_PUSH_URL, messages, {
+            headers: {
+              Accept: "application/json",
+              "Accept-encoding": "gzip, deflate",
+              "Content-Type": "application/json",
+            },
+            timeout: 10000,
           });
+
+          const tickets = resp.data?.data;
+          if (Array.isArray(tickets)) {
+            tickets.forEach((ticket, idx) => {
+              if (
+                ticket?.status === "error" &&
+                ticket?.details?.error === "DeviceNotRegistered" &&
+                chunk[idx]
+              ) {
+                invalidTokens.add(chunk[idx]);
+              }
+            });
+          }
+        } catch (chunkErr) {
+          console.error("Error enviando lote Expo Push:", chunkErr.message);
         }
-      } catch (chunkErr) {
-        console.error("Error enviando lote Expo Push:", chunkErr.message);
       }
     }
 
-    if (invalidTokens.length > 0) {
-      await PushToken.deleteMany({ token: { $in: invalidTokens } });
+    if (invalidTokens.size > 0) {
+      await PushToken.deleteMany({ token: { $in: [...invalidTokens] } });
     }
   } catch (error) {
     console.error("Error en enviarPushMasivo:", error.message);
   }
 };
 
-export const evaluarYEnviarNotificaciones = async (
-  nuevoDoc,
-  ultimaTasaPrevia = null,
-) => {
+const ejecutarEvaluacionInterna = async (nuevoDoc, ultimaTasaPrevia = null) => {
   if (!nuevoDoc) return;
 
   try {
@@ -227,8 +244,11 @@ export const evaluarYEnviarNotificaciones = async (
       estado.referenciasMonedas = new Map();
     }
 
+    const pushesPendientes = [];
     const finHoy = getFinHoyCaracas();
-    const fechaValorDoc = nuevoDoc.fechaValor ? new Date(nuevoDoc.fechaValor) : null;
+    const fechaValorDoc = nuevoDoc.fechaValor
+      ? new Date(nuevoDoc.fechaValor)
+      : null;
 
     // 1. Nueva Tasa Próxima (BCV y Euro)
     if (fechaValorDoc && fechaValorDoc > finHoy) {
@@ -239,7 +259,8 @@ export const evaluarYEnviarNotificaciones = async (
       const cambioTasaProxima =
         isoKey !== estado.ultimaFechaValorBcvNotificada ||
         (Number.isFinite(bcvNuevo) && bcvNuevo !== estado.ultimoBcvNotificado) ||
-        (Number.isFinite(euroNuevo) && euroNuevo !== estado.ultimoEuroNotificado);
+        (Number.isFinite(euroNuevo) &&
+          euroNuevo !== estado.ultimoEuroNotificado);
 
       if (cambioTasaProxima && Number.isFinite(bcvNuevo) && bcvNuevo > 0) {
         const tasaVigente = await Tasa.findOne({
@@ -265,7 +286,7 @@ export const evaluarYEnviarNotificaciones = async (
           euro: euroNuevo,
         };
 
-        await Notificacion.create({
+        const notifDoc = await Notificacion.create({
           tipo: "tasa_proxima",
           titulo,
           cuerpo,
@@ -274,9 +295,15 @@ export const evaluarYEnviarNotificaciones = async (
 
         estado.ultimaFechaValorBcvNotificada = isoKey;
         estado.ultimoBcvNotificado = bcvNuevo;
-        estado.ultimoEuroNotificado = Number.isFinite(euroNuevo) ? euroNuevo : null;
+        estado.ultimoEuroNotificado = Number.isFinite(euroNuevo)
+          ? euroNuevo
+          : null;
 
-        await enviarPushMasivo({ titulo, cuerpo, datos });
+        pushesPendientes.push({
+          titulo,
+          cuerpo,
+          datos: { ...datos, id: String(notifDoc._id) },
+        });
       }
     }
 
@@ -319,23 +346,39 @@ export const evaluarYEnviarNotificaciones = async (
       const msgAlza = construirNotificacionAlza(alzas);
       if (msgAlza) {
         const datos = { tipo: "alza_moneda", monedas: alzas };
-        await Notificacion.create({
+        const notifDoc = await Notificacion.create({
           tipo: "alza_moneda",
           titulo: msgAlza.titulo,
           cuerpo: msgAlza.cuerpo,
           datos,
         });
-        await enviarPushMasivo({
+        pushesPendientes.push({
           titulo: msgAlza.titulo,
           cuerpo: msgAlza.cuerpo,
-          datos,
+          datos: { ...datos, id: String(notifDoc._id) },
         });
       }
     }
 
+    // Guardar estado ANTES de realizar llamadas HTTP lentas a Expo Push
     estado.ultimaActualizacion = new Date();
     await estado.save();
+
+    for (const p of pushesPendientes) {
+      await enviarPushMasivo(p);
+    }
   } catch (error) {
     console.error("Error en evaluarYEnviarNotificaciones:", error.message);
   }
+};
+
+export const evaluarYEnviarNotificaciones = (
+  nuevoDoc,
+  ultimaTasaPrevia = null,
+) => {
+  const run = evalMutex.then(() =>
+    ejecutarEvaluacionInterna(nuevoDoc, ultimaTasaPrevia),
+  );
+  evalMutex = run.catch(() => {});
+  return run;
 };

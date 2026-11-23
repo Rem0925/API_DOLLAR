@@ -6,7 +6,13 @@ import dotenv from 'dotenv';
 import connectDB from './src/config/db.js';
 import { iniciarCronJobs } from './src/jobs/cronJob.js';
 import { getTasas, getHistorialGrafica, getConfigMonedas, activateVip, linkVip } from './src/controllers/tasaController.js';
-import { registrarPushToken, actualizarMutePush, getNotificaciones } from './src/controllers/notificacionController.js';
+import {
+  registrarPushToken,
+  actualizarMutePush,
+  getNotificaciones,
+  rateLimitPush,
+  rateLimitNotificaciones,
+} from './src/controllers/notificacionController.js';
 
 dotenv.config();
 
@@ -14,6 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // 1. Conectar BD y Cron
@@ -26,7 +33,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
 
 // 3. Rutas
 app.get('/api/dolar/ves', getTasas);
@@ -34,9 +41,9 @@ app.get('/api/dolar/historial', getHistorialGrafica);
 app.get('/api/dolar/config', getConfigMonedas);
 
 // Rutas Notificaciones y Push
-app.get('/api/dolar/notificaciones', getNotificaciones);
-app.post('/api/dolar/push/register', registrarPushToken);
-app.patch('/api/dolar/push/mute', actualizarMutePush);
+app.get('/api/dolar/notificaciones', rateLimitNotificaciones, getNotificaciones);
+app.post('/api/dolar/push/register', rateLimitPush, registrarPushToken);
+app.patch('/api/dolar/push/mute', rateLimitPush, actualizarMutePush);
 
 // Rutas VIPs
 app.post('/api/dolar/vip/activate', activateVip);

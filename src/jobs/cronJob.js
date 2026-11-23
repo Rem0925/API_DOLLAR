@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import Tasa from '../models/Tasa.js';
 import Notificacion from '../models/Notificacion.js';
+import PushToken from '../models/PushToken.js';
 import obtenerPrecioDolar from '../utils/scraper.js';
 import { evaluarYEnviarNotificaciones } from '../services/notificationService.js';
 
@@ -67,6 +68,10 @@ export const iniciarCronJobs = () => {
         const fechaLimiteNotif = new Date();
         fechaLimiteNotif.setDate(fechaLimiteNotif.getDate() - 90);
         await Notificacion.deleteMany({ fechaCreacion: { $lt: fechaLimiteNotif } });
+
+        const fechaLimiteTokens = new Date();
+        fechaLimiteTokens.setDate(fechaLimiteTokens.getDate() - 180);
+        await PushToken.deleteMany({ lastSeenAt: { $lt: fechaLimiteTokens } });
     }, {
         timezone: "America/Caracas"
     });

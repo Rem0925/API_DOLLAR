@@ -1,7 +1,52 @@
 import PushToken from "../models/PushToken.js";
 import Notificacion from "../models/Notificacion.js";
 
-const EXPO_TOKEN_REGEX = /^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/;
+export const EXPO_TOKEN_REGEX =
+  /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]{10,120}\]$/;
+
+const createRateLimiter = ({ windowMs = 60_000, max = 30 } = {}) => {
+  const hits = new Map();
+  let lastSweep = Date.now();
+
+  return (req, res, next) => {
+    const now = Date.now();
+
+    if (now - lastSweep > windowMs || hits.size > 5000) {
+      for (const [ip, entry] of hits.entries()) {
+        if (now > entry.resetAt) {
+          hits.delete(ip);
+        }
+      }
+      if (hits.size > 5000) {
+        hits.clear();
+      }
+      lastSweep = now;
+    }
+
+    const key = String(req.ip || req.socket?.remoteAddress || "unknown");
+    const entry = hits.get(key);
+
+    if (!entry || now > entry.resetAt) {
+      hits.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    entry.count += 1;
+    if (entry.count > max) {
+      return res
+        .status(429)
+        .json({ error: "Demasiadas solicitudes, intenta más tarde" });
+    }
+
+    return next();
+  };
+};
+
+export const rateLimitPush = createRateLimiter({ windowMs: 60_000, max: 20 });
+export const rateLimitNotificaciones = createRateLimiter({
+  windowMs: 60_000,
+  max: 60,
+});
 
 export const registrarPushToken = async (req, res) => {
   try {
@@ -12,19 +57,27 @@ export const registrarPushToken = async (req, res) => {
       appVariant = "production",
     } = req.body || {};
 
-    if (typeof token !== "string" || !EXPO_TOKEN_REGEX.test(token)) {
+    if (
+      typeof token !== "string" ||
+      token.length > 160 ||
+      !EXPO_TOKEN_REGEX.test(token)
+    ) {
       return res.status(400).json({ error: "Token Expo inválido" });
     }
 
+    const safePlatform = platform === "ios" ? "ios" : "android";
+    const safeVariant =
+      appVariant === "development" ? "development" : "production";
     const mutedBool = Boolean(muted);
+
     await PushToken.findOneAndUpdate(
       { token },
       {
         $set: {
           token,
-          platform: String(platform || "android"),
+          platform: safePlatform,
           muted: mutedBool,
-          appVariant: String(appVariant || "production"),
+          appVariant: safeVariant,
           lastSeenAt: new Date(),
         },
       },
@@ -42,7 +95,11 @@ export const actualizarMutePush = async (req, res) => {
   try {
     const { token, muted } = req.body || {};
 
-    if (typeof token !== "string" || !EXPO_TOKEN_REGEX.test(token)) {
+    if (
+      typeof token !== "string" ||
+      token.length > 160 ||
+      !EXPO_TOKEN_REGEX.test(token)
+    ) {
       return res.status(400).json({ error: "Token Expo inválido" });
     }
     if (typeof muted !== "boolean") {
@@ -71,8 +128,8 @@ export const getNotificaciones = async (req, res) => {
     const resultado = docs.map((n) => ({
       id: String(n._id),
       tipo: n.tipo,
-      titulo: n.titulo,
-      cuerpo: n.cuerpo,
+      titulo: String(n.titulo || ""),
+      cuerpo: String(n.cuerpo || ""),
       datos: n.datos || {},
       fechaCreacion: n.fechaCreacion,
     }));
