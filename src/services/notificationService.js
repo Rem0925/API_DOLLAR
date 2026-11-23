@@ -163,12 +163,17 @@ export const enviarPushMasivo = async ({ titulo, cuerpo, datos = {} }) => {
 
     for (let i = 0; i < validTokens.length; i += chunkSize) {
       const chunk = validTokens.slice(i, i + chunkSize);
+      const uniqueTag =
+        datos?.tag ||
+        `${datos?.tipo || "vegreen"}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const messageData = { ...(datos || {}), tag: uniqueTag };
       const messages = chunk.map((token) => ({
         to: token,
         title: titulo,
         body: cuerpo,
-        data: datos,
+        data: messageData,
         sound: "default",
+        priority: "high",
         channelId: "default",
       }));
 
